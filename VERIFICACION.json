@@ -1,0 +1,24 @@
+{
+  "based_on": "Fundidoral_ABRIR_EN_NAVEGADOR.html",
+  "base_sha256": "962402ff4f4a5d3158e1f4d614b3f980f0c1cb0c529bc542e154f3fb9a7578f0",
+  "local_reference_count": 35,
+  "missing_local_references": [],
+  "chatgpt_site_dependencies": false,
+  "images_and_posters_count": 30,
+  "videos_count": 3,
+  "external_dependencies": [
+    "Google Fonts: fuentes remotas de la version de partida",
+    "cdnjs: GSAP 3.14.2 y ScrollTrigger 3.14.2, misma version y bytes que el sitio original"
+  ],
+  "all_media_local": true,
+  "changes": [
+    "CSS y JavaScript principal separados del HTML sin cambiar sus reglas ni logica",
+    "Rutas de fotos y videos convertidas en rutas locales",
+    "Fotos adicionales convertidas desde los archivos originales a WebP",
+    "Videos originales transcodificados a H.264/AAC 720 x 1280; mismo contenido y duracion",
+    "Caratulas de video extraidas en el segundo 0.5",
+    "Librerias GSAP enlazadas a cdnjs con verificacion de integridad",
+    "Cabeceras de cache y archivos de despliegue incluidos"
+  ],
+  "visual_byte_identical_export": false
+}

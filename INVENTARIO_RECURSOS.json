@@ -1,0 +1,233 @@
+[
+  {
+    "file": "assets/original-0.6e856e9fd3.png",
+    "source_file": "embedded-0.png",
+    "sha256": "6e856e9fd3f028f4fc922378607c60f15b1942386beaa5778719962d867b4565",
+    "bytes": 10843,
+    "exact_published_bytes": true
+  },
+  {
+    "file": "assets/original-1.a6326e66ab.webp",
+    "source_file": "embedded-1.jpeg",
+    "sha256": "a6326e66ab961ab0bc5333eff2be2726bfed2a04f14013609859d43483d38581",
+    "bytes": 145250,
+    "exact_published_bytes": true
+  },
+  {
+    "file": "assets/original-1-480.518453718b.webp",
+    "source_file": "embedded-1.jpeg",
+    "sha256": "518453718b2ef58aa48ede3c0d96925a02c643c016280ef6843c438c7071382b",
+    "bytes": 27662,
+    "exact_published_bytes": false
+  },
+  {
+    "file": "assets/original-2.cce76f10a9.webp",
+    "source_file": "embedded-2.jpeg",
+    "sha256": "cce76f10a9fc19e60d7318d42fddb670aa2ffca88efcc9e8783ba91a1212174d",
+    "bytes": 114248,
+    "exact_published_bytes": true
+  },
+  {
+    "file": "assets/original-2-480.2bc38a84b1.webp",
+    "source_file": "embedded-2.jpeg",
+    "sha256": "2bc38a84b1e1b896e8344c314b39661ba67b191fe834d89d2179a62be2d9c7ee",
+    "bytes": 19950,
+    "exact_published_bytes": false
+  },
+  {
+    "file": "assets/original-3.4cec376199.webp",
+    "source_file": "embedded-3.jpeg",
+    "sha256": "4cec37619991649489c53eb09d6d009726113a1865ef8559fe1a3675029436cd",
+    "bytes": 91634,
+    "exact_published_bytes": true
+  },
+  {
+    "file": "assets/original-3-480.240d4c5e17.webp",
+    "source_file": "embedded-3.jpeg",
+    "sha256": "240d4c5e177deddb8ccc27bf9b6262fb708bf0ba7d75eb7a13a6267082a8b285",
+    "bytes": 20248,
+    "exact_published_bytes": false
+  },
+  {
+    "file": "assets/original-4.954caae685.webp",
+    "source_file": "embedded-4.jpeg",
+    "sha256": "954caae685467c8666c8b21b14fae24f7a1333a9425f1bdaa2b1833f74895467",
+    "bytes": 74690,
+    "exact_published_bytes": true
+  },
+  {
+    "file": "assets/original-4-480.c8f62cf462.webp",
+    "source_file": "embedded-4.jpeg",
+    "sha256": "c8f62cf4620c8c19f9fb7b141ebc4fad31d34a73ce5ea392ff3af8bc7a86cf00",
+    "bytes": 14720,
+    "exact_published_bytes": false
+  },
+  {
+    "file": "assets/original-5.389c4a19f3.webp",
+    "source_file": "embedded-5.jpeg",
+    "sha256": "389c4a19f34236b369bce19e00d23bb2b54b3d35d6529d9abb6a604010c2f7cc",
+    "bytes": 217954,
+    "exact_published_bytes": true
+  },
+  {
+    "file": "assets/original-5-480.0b81906f0a.webp",
+    "source_file": "embedded-5.jpeg",
+    "sha256": "0b81906f0aa73a23e7d39f37cdb5c56d491fbfc0f8b13b8b717e71a3c8f9bcda",
+    "bytes": 36334,
+    "exact_published_bytes": false
+  },
+  {
+    "file": "assets/original-6.61a230ce07.webp",
+    "source_file": "embedded-6.jpeg",
+    "sha256": "61a230ce07a05b1e7713241b15b792ef2d9651ab15a7a894222c2baa55aaf7c8",
+    "bytes": 62462,
+    "exact_published_bytes": true
+  },
+  {
+    "file": "assets/original-6-480.d6110ca843.webp",
+    "source_file": "embedded-6.jpeg",
+    "sha256": "d6110ca84355e0d81319b172fd11a586c0a1330d2fe7ba814df4d055285adc3e",
+    "bytes": 8076,
+    "exact_published_bytes": false
+  },
+  {
+    "file": "assets/original-7.629e3468d2.webp",
+    "source_file": "embedded-7.jpeg",
+    "sha256": "629e3468d2f69b061f9de39c9bea8cfcc19939a9b48300c37bf9e4a4d366573e",
+    "bytes": 181274,
+    "exact_published_bytes": true
+  },
+  {
+    "file": "assets/original-7-480.be97421677.webp",
+    "source_file": "embedded-7.jpeg",
+    "sha256": "be97421677b589976efce78dcc11ad68ab4acf583aa4cb2f494ec0ec3fac85c0",
+    "bytes": 28776,
+    "exact_published_bytes": false
+  },
+  {
+    "file": "assets/pin-furia.3fe0a25219.webp",
+    "source_file": "IMG_2956.jpeg",
+    "sha256": "3fe0a2521964843c774f577cf618ad11b25a926ac64c80fba7b9937433c7860c",
+    "bytes": 46222,
+    "exact_published_bytes": false
+  },
+  {
+    "file": "assets/pin-furia-480.a437faae01.webp",
+    "source_file": "IMG_2956.jpeg",
+    "sha256": "a437faae01cadf627cad0e2c3b7375974724d08dca27ec8c49c719fe0fd2fdc4",
+    "bytes": 14990,
+    "exact_published_bytes": false
+  },
+  {
+    "file": "assets/medalla-gimnasia.ce488a24cc.webp",
+    "source_file": "IMG_2958.jpeg",
+    "sha256": "ce488a24cc7fd3a278ceef04c769534894b2cdabf93df8b5b351d9814c9b77d9",
+    "bytes": 61098,
+    "exact_published_bytes": false
+  },
+  {
+    "file": "assets/medalla-gimnasia-480.8ca21906bd.webp",
+    "source_file": "IMG_2958.jpeg",
+    "sha256": "8ca21906bdd747bcfbad01446859a9cf421eed975bd870d9c7eefa95e1d0c4d2",
+    "bytes": 19470,
+    "exact_published_bytes": false
+  },
+  {
+    "file": "assets/monedas.fcfcbc6972.webp",
+    "source_file": "IMG_2982.jpeg",
+    "sha256": "fcfcbc69721033981ede280ce2e708009774e591a5c46821a6ed915d62e00f31",
+    "bytes": 103898,
+    "exact_published_bytes": false
+  },
+  {
+    "file": "assets/monedas-480.842be8e6c0.webp",
+    "source_file": "IMG_2982.jpeg",
+    "sha256": "842be8e6c0058b5d4012fa23bf92fb5885580d622c4146edb46428c921440e74",
+    "bytes": 27146,
+    "exact_published_bytes": false
+  },
+  {
+    "file": "assets/trofeo-karting.9529af5057.webp",
+    "source_file": "IMG_2970.jpeg",
+    "sha256": "9529af5057e000649661453814a22cab30ae8ef896ce91db509bc83c2a09551d",
+    "bytes": 63966,
+    "exact_published_bytes": false
+  },
+  {
+    "file": "assets/trofeo-karting-480.ff0ee1603a.webp",
+    "source_file": "IMG_2970.jpeg",
+    "sha256": "ff0ee1603a184d5b77ad05ade16df91c7dac67979c7ea1d0c0c7534408436cfa",
+    "bytes": 18612,
+    "exact_published_bytes": false
+  },
+  {
+    "file": "assets/trofeo-sambil.7153465ecb.webp",
+    "source_file": "IMG_2955.jpeg",
+    "sha256": "7153465ecb08458ddecc2f3073ce8671fd2ebd7a55129fc536c18fc303e8a6eb",
+    "bytes": 38818,
+    "exact_published_bytes": false
+  },
+  {
+    "file": "assets/trofeo-sambil-480.18bd5689be.webp",
+    "source_file": "IMG_2955.jpeg",
+    "sha256": "18bd5689beb46cb1a22cff0fc86089d726c3ff3fbcf82013c8fdecf893b1e966",
+    "bytes": 14314,
+    "exact_published_bytes": false
+  },
+  {
+    "file": "assets/placa-los-arcos.27d444a04b.webp",
+    "source_file": "IMG_2979.PNG",
+    "sha256": "27d444a04bd3f12518221654c61d4ed9896738c79a8159f0458ed26b367d76e5",
+    "bytes": 253710,
+    "exact_published_bytes": false
+  },
+  {
+    "file": "assets/placa-los-arcos-480.625b2b0627.webp",
+    "source_file": "IMG_2979.PNG",
+    "sha256": "625b2b06272b72bfcb639ccfb338162ee42e89333d48b434c841e09580c90fe9",
+    "bytes": 33244,
+    "exact_published_bytes": false
+  },
+  {
+    "file": "assets/pieza-1.1241729093.mp4",
+    "sha256": "124172909358a5290b79b29b97047f23ff308c599194c59c8db9bf0d5d807270",
+    "bytes": 10082465,
+    "source": "Video original del usuario, codificado en H.264/AAC 720 x 1280 para web",
+    "exact_published_bytes": false
+  },
+  {
+    "file": "assets/video-1.b81679fe54.webp",
+    "sha256": "b81679fe540e3ee1040edd9ae4fcb9027d21e0610706eb82a97649eef9f764d4",
+    "bytes": 32616,
+    "source": "Caratula extraida del mismo video, en el segundo 0.5",
+    "exact_published_bytes": false
+  },
+  {
+    "file": "assets/pieza-2.216e2de1dc.mp4",
+    "sha256": "216e2de1dcc257f9a3ada391bb365a98b8c0d18fa42b72dcfb0a8391c9e60610",
+    "bytes": 6134572,
+    "source": "Video original del usuario, codificado en H.264/AAC 720 x 1280 para web",
+    "exact_published_bytes": false
+  },
+  {
+    "file": "assets/video-2.f58df7aef1.webp",
+    "sha256": "f58df7aef1c4a3017abe87e8402bd0f0f2faa8924e1e21943174bf54ead98215",
+    "bytes": 100720,
+    "source": "Caratula extraida del mismo video, en el segundo 0.5",
+    "exact_published_bytes": false
+  },
+  {
+    "file": "assets/pieza-3.16f6fd0a4e.mp4",
+    "sha256": "16f6fd0a4e2c81f8682159596d0ff447e4e0ce3a3f26ac35efffa7dbc042f6e7",
+    "bytes": 9016496,
+    "source": "Video original del usuario, codificado en H.264/AAC 720 x 1280 para web",
+    "exact_published_bytes": false
+  },
+  {
+    "file": "assets/video-3.3765c0a0a5.webp",
+    "sha256": "3765c0a0a54d43133392607a80f30e1fa36027c8796c7caf4faf6c328100ed42",
+    "bytes": 17860,
+    "source": "Caratula extraida del mismo video, en el segundo 0.5",
+    "exact_published_bytes": false
+  }
+]

@@ -1,0 +1,69 @@
+FUNDIDORAL - PAQUETE PARA PUBLICAR
+
+BASE
+Se parte del archivo Fundidoral_ABRIR_EN_NAVEGADOR.html de esta conversacion.
+Se mantiene su estructura, textos, colores, CSS, formulario y logica JavaScript.
+No se ha modificado ni vuelto a publicar el sitio original.
+
+PUBLICAR
+1. Descomprime el ZIP.
+2. Sube TODO su contenido al directorio publico de tu alojamiento.
+3. index.html debe quedar en la raiz, junto al CSS, al JS y a la carpeta assets.
+4. No subas solo el HTML ni cambies los nombres de los archivos.
+5. Activa HTTPS y comprueba el carrusel, las fotos y los tres videos.
+
+CLOUDFLARE PAGES
+El panel de Direct Upload acepta el ZIP o una carpeta de archivos estaticos.
+No necesita compilacion, base de datos, PHP, Node ni una cuenta de ChatGPT.
+El archivo _headers configura cache para los recursos en Pages y Netlify.
+Consulta: https://developers.cloudflare.com/pages/get-started/direct-upload/
+
+NETLIFY / VERCEL / OTRO ALOJAMIENTO
+Para carga manual, sube la carpeta completa. Se incluyen netlify.toml y
+vercel.json; los alojamientos que no los utilizan pueden ignorarlos.
+En un alojamiento tradicional, coloca los archivos en public_html o en
+la carpeta publica que indique tu proveedor.
+
+CONTENIDO LOCAL
+- index.html: pagina y rutas locales.
+- styles.*.css: estilos y referencias a fuentes remotas.
+- app.*.js: menu, carrusel, galeria, formulario y controles de video.
+- assets/: logo, fotografias WebP, variantes pequenas, caratulas y tres MP4.
+- _headers, robots.txt y configuraciones de despliegue.
+- VERIFICACION.json e INVENTARIO_RECURSOS.json: alcance e inventario.
+
+DEPENDENCIAS EXTERNAS IMPORTANTES
+Los archivos de Fundidoral, incluidas las fotos y los videos, estan dentro
+del paquete. Ninguno se descarga desde la pagina de ChatGPT Sites.
+Las fuentes se cargan desde Google Fonts, como en el HTML de partida.
+GSAP y ScrollTrigger 3.14.2 se cargan desde cdnjs. Se verifico que sus bytes
+coinciden con las librerias utilizadas por la pagina original y se incluyo
+verificacion de integridad SRI.
+Necesita Internet para esas tipografias y librerias. No es un paquete
+totalmente sin conexion. No se adjuntan archivos binarios de tipografias.
+
+MULTIMEDIA
+Las fotografias corresponden a los archivos originales del usuario.
+Los videos se han preparado a 720 x 1280 en H.264/AAC, conservando contenido,
+orden y duracion; no son copias binarias de los MP4 del servidor anterior.
+Las caratulas se extraen del segundo 0.5 de cada video. Por tanto, este
+paquete no se presenta como una exportacion byte a byte del proyecto Work.
+Las adaptaciones y verificaciones estan documentadas en VERIFICACION.json.
+
+WHATSAPP
+Se mantiene el numero +58 424 2018095 que utiliza el HTML recibido.
+El formulario prepara una solicitud y abre WhatsApp. No guarda datos
+en una base de datos y no envia mensajes automaticamente.
+
+VISTA PREVIA
+Abre index.html en un navegador real con conexion a Internet, manteniendo
+la carpeta assets y los demas archivos a su lado. Un visor de adjuntos o
+la vista previa de una app de archivos no equivale a un navegador.
+Para una prueba por HTTP, ejecuta desde esta carpeta:
+python3 -m http.server 8000
+Luego abre http://localhost:8000 . Para publicar usa un alojamiento HTTPS.
+
+ESTADO
+La entrega contiene archivos para publicar; no crea un dominio ni activa
+un alojamiento. El proveedor que elijas debe servir los archivos con sus
+tipos MIME correctos y soporte de solicitudes Range para los videos.

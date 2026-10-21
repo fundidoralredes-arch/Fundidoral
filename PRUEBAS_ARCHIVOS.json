@@ -1,0 +1,38 @@
+{
+  "javascript_syntax": "passed",
+  "images_decoded": 30,
+  "videos": [
+    {
+      "file": "pieza-3.16f6fd0a4e.mp4",
+      "bytes": 9016496,
+      "duration": 44.82,
+      "video_codec": "h264",
+      "audio_codec": "aac",
+      "width": 720,
+      "height": 1280,
+      "fast_start": true
+    },
+    {
+      "file": "pieza-1.1241729093.mp4",
+      "bytes": 10082465,
+      "duration": 49.152,
+      "video_codec": "h264",
+      "audio_codec": "aac",
+      "width": 720,
+      "height": 1280,
+      "fast_start": true
+    },
+    {
+      "file": "pieza-2.216e2de1dc.mp4",
+      "bytes": 6134572,
+      "duration": 28.866667,
+      "video_codec": "h264",
+      "audio_codec": "aac",
+      "width": 720,
+      "height": 1280,
+      "fast_start": true
+    }
+  ],
+  "browser_test": "Local Chromium blocked HTTP preview by administrator; no live-package visual verification claimed.",
+  "dependencies": "GSAP 3.14.2 / ScrollTrigger 3.14.2 on cdnjs and Google Fonts; external Internet required."
+}
