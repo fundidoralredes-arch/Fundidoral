@@ -5,3 +5,10 @@
 node_modules/
 .vercel/
 .netlify/
+
+.DS_Store
+.env
+.env.*
+node_modules/
+.vercel/
+.netlify/
