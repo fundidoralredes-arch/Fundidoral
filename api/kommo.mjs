@@ -2,6 +2,9 @@ const JSON_HEADERS = {
   'Content-Type': 'application/json; charset=utf-8'
 };
 
+const FILE_MARKER = '__FUNDIDORAL_LANDING_FILE__';
+const FILE_SENT_MARKER = '__FUNDIDORAL_LANDING_FILE_SENT__';
+
 function json(data, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
@@ -9,7 +12,7 @@ function json(data, status = 200) {
   });
 }
 
-function clean(value, max = 2000) {
+function clean(value, max = 4000) {
   return String(value ?? '').trim().slice(0, max);
 }
 
@@ -99,7 +102,7 @@ async function parseResponse(res) {
       `HTTP ${res.status}`;
 
     throw new Error(
-      `Kommo respondió ${res.status}: ${clean(detail, 1500)}`
+      `Kommo respondió ${res.status}: ${clean(detail, 1800)}`
     );
   }
 
@@ -145,6 +148,69 @@ async function kommoFetch(path, options = {}) {
     );
 
   return parseResponse(response);
+}
+
+async function ensureIncomingMessageWebhook(origin) {
+  const destination =
+    `${origin.replace(/\/$/, '')}/api/kommo?action=webhook`;
+
+  try {
+    const existing =
+      await kommoFetch(
+        `/api/v4/webhooks?filter[destination]=${encodeURIComponent(destination)}`
+      );
+
+    const webhooks =
+      existing?._embedded?.webhooks || [];
+
+    const alreadyExists =
+      webhooks.some(
+        (hook) =>
+          hook.destination === destination &&
+          Array.isArray(hook.settings) &&
+          hook.settings.includes('add_message') &&
+          !hook.disabled
+      );
+
+    if (alreadyExists) {
+      return {
+        ready: true,
+        existing: true,
+        destination
+      };
+    }
+
+    await kommoFetch(
+      '/api/v4/webhooks',
+      {
+        method: 'POST',
+
+        body: JSON.stringify({
+          destination,
+          settings: ['add_message']
+        })
+      }
+    );
+
+    return {
+      ready: true,
+      existing: false,
+      destination
+    };
+  } catch (error) {
+    console.warn(
+      '[Fundidoral] No se pudo registrar automáticamente el webhook:',
+      error?.message || error
+    );
+
+    return {
+      ready: false,
+      destination,
+      error:
+        error?.message ||
+        'No se pudo registrar el webhook.'
+    };
+  }
 }
 
 async function getPipelinePlacement() {
@@ -207,11 +273,6 @@ async function getPipelinePlacement() {
       selected.pipeline?._embedded
         ?.statuses || [];
 
-    /*
-      Solo etapas normales.
-      No utilizamos "Leads Entrantes"
-      porque es una etapa especial.
-    */
     const regular =
       statuses
         .filter(
@@ -262,7 +323,7 @@ async function getPipelinePlacement() {
   }
 }
 
-async function createLead(payload) {
+async function createLead(payload, origin) {
   const product =
     clean(payload.product, 180);
 
@@ -298,14 +359,11 @@ async function createLead(payload) {
     );
   }
 
+  const webhook =
+    await ensureIncomingMessageWebhook(origin);
+
   const placement =
     await getPipelinePlacement();
-
-  const lead = {
-    name:
-      `Landing Web · ${product} · ${quantity} piezas`,
-    ...placement
-  };
 
   const created =
     await kommoFetch(
@@ -313,9 +371,15 @@ async function createLead(payload) {
       {
         method: 'POST',
 
-        body: JSON.stringify([
-          lead
-        ])
+        body:
+          JSON.stringify([
+            {
+              name:
+                `Landing Web · ${product} · ${quantity} piezas`,
+
+              ...placement
+            }
+          ])
       }
     );
 
@@ -331,29 +395,28 @@ async function createLead(payload) {
     );
   }
 
-  /*
-    Etiqueta opcional.
-    Si falla, no interrumpimos la solicitud.
-  */
   try {
     await kommoFetch(
       '/api/v4/leads',
       {
         method: 'PATCH',
 
-        body: JSON.stringify([
-          {
-            id: leadId,
+        body:
+          JSON.stringify([
+            {
+              id:
+                leadId,
 
-            _embedded: {
-              tags: [
-                {
-                  name: 'Landing Web'
-                }
-              ]
+              _embedded: {
+                tags: [
+                  {
+                    name:
+                      'Landing Web'
+                  }
+                ]
+              }
             }
-          }
-        ])
+          ])
       }
     );
   } catch (error) {
@@ -365,15 +428,25 @@ async function createLead(payload) {
 
   const note = [
     'Cotización recibida desde la landing web de Fundidoral.',
+
     '',
+
     `Referencia: FD-${leadId}`,
+
     '',
+
     `Producto: ${product}`,
+
     `Material: ${material}`,
+
     `Cantidad: ${quantity} piezas`,
+
     `Medidas: ${size}`,
+
     `Acabado: ${finish}`,
+
     `Detalles: ${details}`,
+
     fileName
       ? `Archivo: ${fileName}`
       : 'Archivo: No adjunto'
@@ -385,26 +458,24 @@ async function createLead(payload) {
       {
         method: 'POST',
 
-        body: JSON.stringify([
-          {
-            entity_id:
-              leadId,
+        body:
+          JSON.stringify([
+            {
+              entity_id:
+                leadId,
 
-            note_type:
-              'common',
+              note_type:
+                'common',
 
-            params: {
-              text: note
+              params: {
+                text:
+                  note
+              }
             }
-          }
-        ])
+          ])
       }
     );
   } catch (error) {
-    /*
-      Una nota no debe impedir
-      que el lead quede creado.
-    */
     console.warn(
       '[Fundidoral] Nota:',
       error?.message || error
@@ -413,8 +484,12 @@ async function createLead(payload) {
 
   return {
     leadId,
+
     reference:
-      `FD-${leadId}`
+      `FD-${leadId}`,
+
+    webhookReady:
+      webhook.ready
   };
 }
 
@@ -524,10 +599,6 @@ async function createSession(payload) {
             file_name:
               fileName,
 
-            /*
-              Este es el tamaño REAL
-              exacto del archivo.
-            */
             file_size:
               fileSize,
 
@@ -535,8 +606,9 @@ async function createSession(payload) {
               contentType,
 
             with_preview:
-              contentType
-                .startsWith('image/')
+              contentType.startsWith(
+                'image/'
+              )
           })
       }
     );
@@ -546,7 +618,9 @@ async function createSession(payload) {
       response
     );
 
-  if (!session.upload_url) {
+  if (
+    !session.upload_url
+  ) {
     throw new Error(
       'Kommo no generó upload_url.'
     );
@@ -568,10 +642,6 @@ async function createSession(payload) {
     uploadUrl:
       session.upload_url,
 
-    /*
-      El frontend respetará exactamente
-      el tamaño máximo indicado por Kommo.
-    */
     maxPartSize:
       Number(
         session.max_part_size
@@ -601,22 +671,15 @@ function validUploadUrl(value) {
       .toLowerCase();
 
   if (
-    !host.endsWith(
-      '.kommo.com'
+    !(
+      host === 'kommo.com' ||
+      host.endsWith(
+        '.kommo.com'
+      )
     )
   ) {
     throw new Error(
       'Host de subida inválido.'
-    );
-  }
-
-  if (
-    !url.pathname.includes(
-      '/upload/'
-    )
-  ) {
-    throw new Error(
-      'Ruta de subida inválida.'
     );
   }
 
@@ -636,37 +699,17 @@ async function uploadPart(
       uploadUrl
     );
 
-  /*
-    Recibimos exactamente los bytes
-    enviados por el navegador.
-  */
   const buffer =
     await request.arrayBuffer();
 
-  const bytes =
-    buffer.byteLength;
-
-  if (!bytes) {
+  if (
+    !buffer.byteLength
+  ) {
     throw new Error(
       'El fragmento está vacío.'
     );
   }
 
-  /*
-    IMPORTANTE:
-    NO usamos FormData aquí.
-
-    Antes hacíamos:
-      new FormData()
-      form.append(...)
-
-    Eso añadía headers/boundaries al cuerpo
-    y Kommo terminaba recibiendo más bytes
-    que el file_size declarado.
-
-    Ahora reenviamos EXACTAMENTE el mismo
-    ArrayBuffer.
-  */
   const response =
     await fetch(
       target,
@@ -681,10 +724,7 @@ async function uploadPart(
             'application/json',
 
           'Content-Type':
-            'application/octet-stream',
-
-          'Content-Length':
-            String(bytes)
+            'application/octet-stream'
         },
 
         body:
@@ -697,20 +737,18 @@ async function uploadPart(
       response
     );
 
-  /*
-    Todavía faltan fragmentos.
-  */
-  if (data.next_url) {
+  if (
+    data.next_url
+  ) {
     return {
       nextUrl:
         data.next_url
     };
   }
 
-  /*
-    Archivo terminado.
-  */
-  if (data.uuid) {
+  if (
+    data.uuid
+  ) {
     return {
       fileUuid:
         data.uuid,
@@ -725,7 +763,7 @@ async function uploadPart(
 
       size:
         data.size ||
-        bytes
+        buffer.byteLength
     };
   }
 
@@ -734,7 +772,29 @@ async function uploadPart(
   );
 }
 
-async function attachFile(payload) {
+function chatAttachmentType(
+  fileName
+) {
+  const name =
+    clean(
+      fileName,
+      255
+    ).toLowerCase();
+
+  if (
+    /\.(jpe?g|png|webp|gif|bmp|heic|heif)$/i.test(
+      name
+    )
+  ) {
+    return 'picture';
+  }
+
+  return 'file';
+}
+
+async function attachFile(
+  payload
+) {
   const leadId =
     Number(
       payload.leadId
@@ -743,6 +803,12 @@ async function attachFile(payload) {
   const fileUuid =
     clean(
       payload.fileUuid,
+      120
+    );
+
+  const versionUuid =
+    clean(
+      payload.versionUuid,
       120
     );
 
@@ -762,11 +828,6 @@ async function attachFile(payload) {
     );
   }
 
-  /*
-    Esta llamada coloca el archivo
-    directamente en Media/Archivos
-    del lead.
-  */
   await kommoFetch(
     `/api/v4/leads/${leadId}/files`,
     {
@@ -782,62 +843,345 @@ async function attachFile(payload) {
     }
   );
 
-  /*
-    Nota informativa opcional.
-    No bloqueamos el proceso si falla.
-  */
-  try {
-    await kommoFetch(
-      '/api/v4/leads/notes',
-      {
-        method: 'POST',
+  const markerPayload = {
+    fileUuid,
 
-        body:
-          JSON.stringify([
-            {
-              entity_id:
-                leadId,
+    versionUuid:
+      versionUuid || null,
 
-              note_type:
-                'common',
+    fileName,
 
-              params: {
-                text:
-                  `Archivo recibido desde la landing: ${fileName}`
-              }
+    type:
+      chatAttachmentType(
+        fileName
+      )
+  };
+
+  await kommoFetch(
+    '/api/v4/leads/notes',
+    {
+      method: 'POST',
+
+      body:
+        JSON.stringify([
+          {
+            entity_id:
+              leadId,
+
+            note_type:
+              'common',
+
+            params: {
+              text:
+                `Archivo recibido desde la landing: ${fileName}`
             }
-          ])
-      }
-    );
-  } catch (error) {
-    console.warn(
-      '[Fundidoral] Nota de archivo:',
-      error?.message || error
-    );
-  }
+          },
+
+          {
+            entity_id:
+              leadId,
+
+            note_type:
+              'common',
+
+            params: {
+              text:
+                `${FILE_MARKER}${JSON.stringify(markerPayload)}`
+            }
+          }
+        ])
+    }
+  );
 
   return {
     attached: true,
+
     leadId,
-    fileUuid
+
+    fileUuid,
+
+    versionUuid:
+      versionUuid || null
+  };
+}
+
+function extractWebhookField(
+  params,
+  field
+) {
+  for (
+    const [key, value]
+    of params.entries()
+  ) {
+    if (
+      key.includes('[add]') &&
+      key.endsWith(`[${field}]`) &&
+      !key.includes('[author]')
+    ) {
+      return value;
+    }
+  }
+
+  return null;
+}
+
+function noteText(note) {
+  return clean(
+    note?.params?.text,
+    10000
+  );
+}
+
+async function getPendingLandingFile(
+  leadId
+) {
+  const data =
+    await kommoFetch(
+      `/api/v4/leads/${leadId}/notes?limit=250&order[id]=desc`
+    );
+
+  const notes =
+    data?._embedded?.notes || [];
+
+  const sent =
+    new Set(
+      notes
+        .map(noteText)
+        .filter(
+          (text) =>
+            text.startsWith(
+              FILE_SENT_MARKER
+            )
+        )
+        .map(
+          (text) =>
+            text.slice(
+              FILE_SENT_MARKER.length
+            )
+        )
+    );
+
+  for (
+    const note of notes
+  ) {
+    const text =
+      noteText(note);
+
+    if (
+      !text.startsWith(
+        FILE_MARKER
+      )
+    ) {
+      continue;
+    }
+
+    try {
+      const payload =
+        JSON.parse(
+          text.slice(
+            FILE_MARKER.length
+          )
+        );
+
+      if (
+        payload?.fileUuid &&
+        !sent.has(
+          payload.fileUuid
+        )
+      ) {
+        return payload;
+      }
+    } catch {
+      // Ignoramos marcadores malformados.
+    }
+  }
+
+  return null;
+}
+
+async function sendLandingFileToConversation(
+  talkId,
+  leadId,
+  file
+) {
+  if (
+    !talkId ||
+    !leadId ||
+    !file?.fileUuid
+  ) {
+    return {
+      sent: false
+    };
+  }
+
+  const body = {
+    attachment: {
+      drive_uuid:
+        file.fileUuid,
+
+      type:
+        file.type ||
+        'file'
+    }
+  };
+
+  if (
+    file.versionUuid
+  ) {
+    body.attachment.drive_version_uuid =
+      file.versionUuid;
+  }
+
+  await kommoFetch(
+    `/api/v4/talks/${talkId}/send_message`,
+    {
+      method: 'POST',
+
+      body:
+        JSON.stringify(body)
+    }
+  );
+
+  await kommoFetch(
+    '/api/v4/leads/notes',
+    {
+      method: 'POST',
+
+      body:
+        JSON.stringify([
+          {
+            entity_id:
+              leadId,
+
+            note_type:
+              'common',
+
+            params: {
+              text:
+                `${FILE_SENT_MARKER}${file.fileUuid}`
+            }
+          },
+
+          {
+            entity_id:
+              leadId,
+
+            note_type:
+              'common',
+
+            params: {
+              text:
+                `Archivo enviado automáticamente al chat de WhatsApp: ${file.fileName || 'archivo'}`
+            }
+          }
+        ])
+    }
+  );
+
+  return {
+    sent: true
+  };
+}
+
+async function handleIncomingMessageWebhook(
+  request
+) {
+  const bodyText =
+    await request.text();
+
+  const params =
+    new URLSearchParams(
+      bodyText
+    );
+
+  const talkId =
+    Number(
+      extractWebhookField(
+        params,
+        'talk_id'
+      )
+    );
+
+  const leadId =
+    Number(
+      extractWebhookField(
+        params,
+        'entity_id'
+      ) ||
+      extractWebhookField(
+        params,
+        'element_id'
+      )
+    );
+
+  const type =
+    clean(
+      extractWebhookField(
+        params,
+        'type'
+      ),
+      30
+    ).toLowerCase();
+
+  const origin =
+    clean(
+      extractWebhookField(
+        params,
+        'origin'
+      ),
+      80
+    ).toLowerCase();
+
+  if (
+    !talkId ||
+    !leadId ||
+    type !== 'incoming'
+  ) {
+    return {
+      accepted: true,
+      ignored: true
+    };
+  }
+
+  if (
+    origin &&
+    origin.includes(
+      'telegram'
+    )
+  ) {
+    return {
+      accepted: true,
+      ignored: true
+    };
+  }
+
+  const file =
+    await getPendingLandingFile(
+      leadId
+    );
+
+  if (!file) {
+    return {
+      accepted: true,
+      noPendingFile: true
+    };
+  }
+
+  const result =
+    await sendLandingFileToConversation(
+      talkId,
+      leadId,
+      file
+    );
+
+  return {
+    accepted: true,
+    ...result
   };
 }
 
 export default {
   async fetch(request) {
-    if (
-      request.method !== 'POST'
-    ) {
-      return json(
-        {
-          ok: false,
-          error:
-            'Método no permitido.'
-        },
-        405
-      );
-    }
-
     const url =
       new URL(
         request.url
@@ -849,10 +1193,34 @@ export default {
       );
 
     try {
-      /*
-        La subida del fragmento
-        NO es JSON.
-      */
+      if (
+        request.method === 'POST' &&
+        action === 'webhook'
+      ) {
+        const result =
+          await handleIncomingMessageWebhook(
+            request
+          );
+
+        return json({
+          ok: true,
+          ...result
+        });
+      }
+
+      if (
+        request.method !== 'POST'
+      ) {
+        return json(
+          {
+            ok: false,
+            error:
+              'Método no permitido.'
+          },
+          405
+        );
+      }
+
       if (
         action === 'part'
       ) {
@@ -885,7 +1253,8 @@ export default {
       ) {
         const result =
           await createLead(
-            payload
+            payload,
+            url.origin
           );
 
         return json({
