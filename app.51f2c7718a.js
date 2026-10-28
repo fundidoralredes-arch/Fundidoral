@@ -101,46 +101,172 @@ document.addEventListener('DOMContentLoaded', function () {
     }
   });
 
-  form.addEventListener('submit', (e) => {
+  async function kommoRequest(action, payload) {
+    const response = await fetch(`/api/kommo?action=${encodeURIComponent(action)}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok || data.ok === false) {
+      throw new Error(data.error || 'No se pudo registrar la solicitud en Kommo.');
+    }
+    return data;
+  }
+
+  async function uploadPart(uploadUrl, blob) {
+    const response = await fetch(`/api/kommo?action=part&url=${encodeURIComponent(uploadUrl)}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/octet-stream' },
+      body: blob
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok || data.ok === false) {
+      throw new Error(data.error || 'No se pudo subir el archivo a Kommo.');
+    }
+    return data;
+  }
+
+  async function uploadFileToKommo(file, leadId) {
+    const session = await kommoRequest('session', {
+      leadId,
+      fileName: file.name,
+      fileSize: file.size,
+      contentType: file.type || 'application/octet-stream'
+    });
+
+    if (session.maxFileSize && file.size > session.maxFileSize) {
+      throw new Error(`El archivo supera el máximo permitido por Kommo (${readableBytes(session.maxFileSize)}).`);
+    }
+
+    const partSize = Math.max(64 * 1024, Math.min(Number(session.maxPartSize) || 128 * 1024, 1024 * 1024));
+    let uploadUrl = session.uploadUrl;
+    let offset = 0;
+    let uploaded = null;
+
+    while (offset < file.size) {
+      const chunk = file.slice(offset, Math.min(offset + partSize, file.size));
+      const result = await uploadPart(uploadUrl, chunk);
+      offset += chunk.size;
+
+      if (designFileMeta) {
+        const percent = Math.min(100, Math.round((offset / file.size) * 100));
+        designFileMeta.hidden = false;
+        designFileMeta.textContent = `Subiendo ${file.name} a Kommo… ${percent}%`;
+      }
+
+      if (result.nextUrl) {
+        uploadUrl = result.nextUrl;
+      } else if (result.fileUuid) {
+        uploaded = result;
+        break;
+      } else {
+        throw new Error('Kommo no confirmó la carga del archivo.');
+      }
+    }
+
+    if (!uploaded || !uploaded.fileUuid) {
+      throw new Error('La carga del archivo no se completó.');
+    }
+
+    await kommoRequest('attach', {
+      leadId,
+      fileUuid: uploaded.fileUuid,
+      versionUuid: uploaded.versionUuid || null,
+      fileName: file.name
+    });
+
+    if (designFileMeta) {
+      designFileMeta.hidden = false;
+      designFileMeta.textContent = `Archivo enviado a Kommo: ${file.name} · ${readableBytes(file.size)}`;
+    }
+
+    return uploaded;
+  }
+
+  form.addEventListener('submit', async (e) => {
     e.preventDefault();
     const qty = Number($('#quantity').value);
     if (!form.reportValidity() || !Number.isInteger(qty) || qty < 1) return;
 
-    const uploadLine = uploadedFile
-      ? `Archivo de diseño: ${uploadedFile.name} (${readableBytes(uploadedFile.size)})`
-      : 'Archivo de diseño: No adjunto';
+    const submitBtn = form.querySelector('button[type=\"submit\"]');
+    const originalSubmit = submitBtn ? submitBtn.innerHTML : '';
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.setAttribute('aria-busy', 'true');
+      submitBtn.innerHTML = 'Enviando solicitud… <span>↗</span>';
+    }
 
-    const extraNote = uploadedFile
-      ? 'Diseño: incluido con esta solicitud.'
-      : 'Diseño: no adjunto.';
+    const quote = {
+      product: productSelect.value,
+      material: $('#material').value,
+      quantity: qty,
+      size: $('#size').value.trim() || 'Por definir',
+      finish: $('#finish').value,
+      details: $('#details').value.trim() || 'Por definir',
+      fileName: uploadedFile ? uploadedFile.name : null,
+      fileSize: uploadedFile ? uploadedFile.size : null,
+      fileType: uploadedFile ? (uploadedFile.type || 'application/octet-stream') : null
+    };
 
-    message = [
-      'Hola, equipo Fundidoral. Quisiera solicitar una cotización:',
-      '',
-      `Producto: ${productSelect.value}`,
-      `Material: ${$('#material').value}`,
-      `Cantidad: ${qty} piezas`,
-      `Medidas: ${$('#size').value.trim() || 'Por definir'}`,
-      `Acabado: ${$('#finish').value}`,
-      `Detalles: ${$('#details').value.trim() || 'Por definir'}`,
-      uploadLine,
-      extraNote,
-      '',
-      'Quedo atento/a a su respuesta.'
-    ].join('\n');
+    try {
+      const created = await kommoRequest('create', quote);
+      const reference = created.reference || `FD-${created.leadId}`;
 
-    link.href = `https://wa.me/584242018095?text=${encodeURIComponent(message)}`;
-    $('#waFallback').href = `https://api.whatsapp.com/send?phone=584242018095&text=${encodeURIComponent(message)}`;
-    $('#messagePreview').textContent = message;
-    uploadReminder.hidden = !uploadedFile;
-    if (shareStatus) shareStatus.textContent = '';
-    form.hidden = true;
-    ready.hidden = false;
-    $('#formStep').textContent = '02 / REVISA Y ENVÍA';
-    $('#copyStatus').textContent = '';
-    ready.scrollIntoView({ behavior: reduced ? 'instant' : 'smooth', block: 'center' });
-    link.focus({ preventScroll: true });
-    if (window.ScrollTrigger) ScrollTrigger.refresh();
+      if (uploadedFile) {
+        await uploadFileToKommo(uploadedFile, created.leadId);
+      }
+
+      const uploadLine = uploadedFile
+        ? `Archivo de diseño: ${uploadedFile.name} (${readableBytes(uploadedFile.size)})`
+        : 'Archivo de diseño: No adjunto';
+
+      const extraNote = uploadedFile
+        ? 'Diseño: incluido con esta solicitud y respaldado en Kommo.'
+        : 'Diseño: no adjunto.';
+
+      message = [
+        'Hola, equipo Fundidoral. Quisiera solicitar una cotización:',
+        '',
+        `Referencia: ${reference}`,
+        `Producto: ${productSelect.value}`,
+        `Material: ${$('#material').value}`,
+        `Cantidad: ${qty} piezas`,
+        `Medidas: ${$('#size').value.trim() || 'Por definir'}`,
+        `Acabado: ${$('#finish').value}`,
+        `Detalles: ${$('#details').value.trim() || 'Por definir'}`,
+        uploadLine,
+        extraNote,
+        '',
+        'Quedo atento/a a su respuesta.'
+      ].join('\n');
+
+      link.href = `https://wa.me/584242018095?text=${encodeURIComponent(message)}`;
+      $('#waFallback').href = `https://api.whatsapp.com/send?phone=584242018095&text=${encodeURIComponent(message)}`;
+      $('#messagePreview').textContent = message;
+      uploadReminder.hidden = !uploadedFile;
+      if (shareStatus) shareStatus.textContent = '';
+      form.hidden = true;
+      ready.hidden = false;
+      $('#formStep').textContent = '02 / REVISA Y ENVÍA';
+      $('#copyStatus').textContent = '';
+      ready.scrollIntoView({ behavior: reduced ? 'instant' : 'smooth', block: 'center' });
+      link.focus({ preventScroll: true });
+      if (window.ScrollTrigger) ScrollTrigger.refresh();
+    } catch (error) {
+      if (designFileMeta) {
+        designFileMeta.hidden = false;
+        designFileMeta.textContent = error && error.message
+          ? `No se pudo enviar la solicitud: ${error.message}`
+          : 'No se pudo enviar la solicitud. Intenta nuevamente.';
+      }
+    } finally {
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.removeAttribute('aria-busy');
+        submitBtn.innerHTML = originalSubmit;
+      }
+    }
   });
 
   async function shareDesignAndQuote() {
