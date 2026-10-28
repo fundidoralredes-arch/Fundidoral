@@ -188,11 +188,8 @@ async function ensureIncomingMessageWebhook(
     const alreadyExists =
       webhooks.some(
         (hook) =>
-          hook.destination ===
-            destination &&
-          Array.isArray(
-            hook.settings
-          ) &&
+          hook.destination === destination &&
+          Array.isArray(hook.settings) &&
           hook.settings.includes(
             'add_message'
           ) &&
@@ -455,11 +452,6 @@ async function createLead(
     );
   }
 
-  /*
-    Intentamos asegurar el webhook,
-    pero jamás impedimos crear el lead
-    si falla esta operación.
-  */
   try {
     await ensureIncomingMessageWebhook(
       origin
@@ -506,9 +498,6 @@ async function createLead(
     );
   }
 
-  /*
-    ETIQUETA
-  */
   try {
     await kommoFetch(
       '/api/v4/leads',
@@ -541,9 +530,6 @@ async function createLead(
     );
   }
 
-  /*
-    NOTA CON COTIZACIÓN
-  */
   const note = [
     'Cotización recibida desde la landing web de Fundidoral.',
 
@@ -889,9 +875,6 @@ async function uploadPart(
     };
   }
 
-  /*
-    Resultado final de la carga.
-  */
   if (
     data.uuid
   ) {
@@ -1021,10 +1004,6 @@ async function attachFile(
     }
   );
 
-  /*
-    Conservamos también el marcador
-    como respaldo.
-  */
   const markerPayload = {
     fileUuid,
 
@@ -1106,9 +1085,8 @@ function noteText(note) {
 }
 
 /*
-  NUEVA VERSIÓN:
   BUSCAR DIRECTAMENTE EL ARCHIVO
-  ASOCIADO AL LEAD.
+  ASOCIADO AL LEAD
 */
 async function getPendingLandingFile(
   leadId
@@ -1120,10 +1098,6 @@ async function getPendingLandingFile(
     }
   );
 
-  /*
-    1. Consultar archivos directamente
-    asociados al lead.
-  */
   const linked =
     await kommoFetch(
       `/api/v4/leads/${leadId}/files?limit=50`
@@ -1155,9 +1129,6 @@ async function getPendingLandingFile(
     return null;
   }
 
-  /*
-    Tomamos el más reciente.
-  */
   const relation =
     attachedFiles[
       attachedFiles.length - 1
@@ -1168,11 +1139,6 @@ async function getPendingLandingFile(
     relation
   );
 
-  /*
-    Kommo puede devolver
-    file_uuid o uuid según
-    la respuesta.
-  */
   const relationFileUuid =
     clean(
       relation.file_uuid ||
@@ -1208,9 +1174,6 @@ async function getPendingLandingFile(
     return null;
   }
 
-  /*
-    2. Consultar el archivo en Drive.
-  */
   const {
     token
   } = config();
@@ -1240,11 +1203,6 @@ async function getPendingLandingFile(
         response
       );
   } catch (error) {
-    /*
-      Si Drive no nos deja consultar
-      el detalle, usamos los datos de
-      la relación del lead como respaldo.
-    */
     console.warn(
       '[Fundidoral webhook] No se pudo consultar detalle en Drive:',
       error?.message ||
@@ -1252,10 +1210,6 @@ async function getPendingLandingFile(
     );
   }
 
-  /*
-    Distintas variantes posibles
-    del UUID del archivo.
-  */
   const realFileUuid =
     clean(
       driveFile.uuid ||
@@ -1264,10 +1218,6 @@ async function getPendingLandingFile(
       160
     );
 
-  /*
-    Distintas variantes posibles
-    del UUID de versión.
-  */
   const versionUuid =
     clean(
       driveFile.version_uuid ||
@@ -1301,10 +1251,6 @@ async function getPendingLandingFile(
     }
   );
 
-  /*
-    3. Evitar duplicar un archivo
-    que ya haya sido enviado.
-  */
   try {
     const notes =
       await kommoFetch(
@@ -1370,6 +1316,10 @@ async function getPendingLandingFile(
 
 /*
   ENVIAR ARCHIVO AL CHAT
+
+  IMPORTANTE:
+  ESTE MENSAJE SOLO SE ENVÍA JUNTO
+  A LA IMAGEN PROCEDENTE DE LA LANDING.
 */
 async function sendLandingFileToConversation(
   talkId,
@@ -1402,7 +1352,16 @@ async function sendLandingFileToConversation(
       file.versionUuid;
   }
 
+  /*
+    ESTE ES EL ÚNICO MENSAJE NUEVO.
+
+    No modifica SalesBots,
+    Round Robin ni otras automatizaciones.
+  */
   const body = {
+    text:
+      '✅ ¡Hemos recibido tu diseño! Lo revisaremos para preparar tu cotización.',
+
     attachment
   };
 
@@ -1434,9 +1393,6 @@ async function sendLandingFileToConversation(
     result
   );
 
-  /*
-    Marcar como enviado.
-  */
   try {
     await kommoFetch(
       '/api/v4/leads/notes',
@@ -1488,18 +1444,12 @@ async function sendLandingFileToConversation(
 }
 
 /*
-  PARSER DEL WEBHOOK FORM-URLENCODED
+  PARSER DEL WEBHOOK
 */
 function getWebhookField(
   params,
   field
 ) {
-  /*
-    Forma:
-    add[0][talk_id]
-    add[0][text]
-    add[0][entity_id]
-  */
   for (
     const [
       key,
@@ -1519,9 +1469,6 @@ function getWebhookField(
     }
   }
 
-  /*
-    Compatibilidad adicional.
-  */
   for (
     const [
       key,
@@ -1562,9 +1509,6 @@ async function handleIncomingMessageWebhook(
   let incoming =
     null;
 
-  /*
-    SOPORTE JSON
-  */
   if (
     contentType.includes(
       'application/json'
@@ -1584,9 +1528,6 @@ async function handleIncomingMessageWebhook(
         ? body.add[0]
         : null;
   } else {
-    /*
-      SOPORTE FORM URL ENCODED
-    */
     const bodyText =
       await request.text();
 
@@ -1700,9 +1641,6 @@ async function handleIncomingMessageWebhook(
     }
   );
 
-  /*
-    SOLO MENSAJES ENTRANTES.
-  */
   if (
     !talkId ||
     type !==
@@ -1723,13 +1661,6 @@ async function handleIncomingMessageWebhook(
     };
   }
 
-  /*
-    La referencia del mensaje tiene
-    el lead real creado por la landing.
-
-    Ejemplo:
-    Referencia: FD-23213544
-  */
   const referenceMatch =
     messageText.match(
       /Referencia:\s*FD-(\d+)/i
@@ -1766,9 +1697,6 @@ async function handleIncomingMessageWebhook(
     };
   }
 
-  /*
-    IGNORAR TELEGRAM.
-  */
   if (
     origin &&
     origin.includes(
@@ -1787,10 +1715,6 @@ async function handleIncomingMessageWebhook(
     };
   }
 
-  /*
-    BUSCAR ARCHIVO REAL
-    DIRECTAMENTE EN EL LEAD.
-  */
   const file =
     await getPendingLandingFile(
       landingLeadId
@@ -1838,10 +1762,6 @@ async function handleIncomingMessageWebhook(
     }
   );
 
-  /*
-    ENVIAR AL MISMO CHAT
-    DE WHATSAPP.
-  */
   const result =
     await sendLandingFileToConversation(
       talkId,
@@ -1888,7 +1808,7 @@ export default {
 
     try {
       /*
-        WEBHOOK DE KOMMO
+        WEBHOOK KOMMO
       */
       if (
         request.method ===
@@ -1926,7 +1846,7 @@ export default {
       }
 
       /*
-        SUBIR PARTE DE ARCHIVO
+        SUBIR PARTE DEL ARCHIVO
       */
       if (
         action ===
@@ -1952,9 +1872,6 @@ export default {
         });
       }
 
-      /*
-        RESTO DE ACCIONES USA JSON.
-      */
       const payload =
         await request
           .json()
@@ -2004,7 +1921,7 @@ export default {
       }
 
       /*
-        ADJUNTAR AL LEAD
+        ADJUNTAR ARCHIVO
       */
       if (
         action ===
