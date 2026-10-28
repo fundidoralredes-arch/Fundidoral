@@ -13,7 +13,9 @@ function json(data, status = 200) {
 }
 
 function clean(value, max = 4000) {
-  return String(value ?? '').trim().slice(0, max);
+  return String(value ?? '')
+    .trim()
+    .slice(0, max);
 }
 
 function normalized(value) {
@@ -38,7 +40,9 @@ function config() {
     'fundidoral';
 
   if (!token) {
-    throw new Error('Falta KOMMO_TOKEN en Vercel.');
+    throw new Error(
+      'Falta KOMMO_TOKEN en Vercel.'
+    );
   }
 
   return {
@@ -48,7 +52,8 @@ function config() {
 }
 
 async function parseResponse(response) {
-  const text = await response.text();
+  const text =
+    await response.text();
 
   let data = {};
 
@@ -64,7 +69,9 @@ async function parseResponse(response) {
 
   if (!response.ok) {
     const validationErrors =
-      Array.isArray(data?.['validation-errors'])
+      Array.isArray(
+        data?.['validation-errors']
+      )
         ? data['validation-errors']
             .map((item) => {
               const field =
@@ -86,7 +93,10 @@ async function parseResponse(response) {
                       .join(', ')
                   : '';
 
-              return [field, errors]
+              return [
+                field,
+                errors
+              ]
                 .filter(Boolean)
                 .join(': ');
             })
@@ -110,14 +120,19 @@ async function parseResponse(response) {
   return data;
 }
 
-async function kommoFetch(path, options = {}) {
+async function kommoFetch(
+  path,
+  options = {}
+) {
   const {
     token,
     subdomain
   } = config();
 
   const headers =
-    new Headers(options.headers || {});
+    new Headers(
+      options.headers || {}
+    );
 
   headers.set(
     'Authorization',
@@ -152,13 +167,11 @@ async function kommoFetch(path, options = {}) {
 }
 
 /*
-  Registra automáticamente el webhook
-  de mensajes entrantes.
-
-  Si falla, NO bloqueamos la creación
-  del lead.
+  WEBHOOK DE MENSAJES ENTRANTES
 */
-async function ensureIncomingMessageWebhook(origin) {
+async function ensureIncomingMessageWebhook(
+  origin
+) {
   const destination =
     `${origin.replace(/\/$/, '')}/api/kommo?action=webhook`;
 
@@ -169,14 +182,20 @@ async function ensureIncomingMessageWebhook(origin) {
       );
 
     const webhooks =
-      existing?._embedded?.webhooks || [];
+      existing?._embedded?.webhooks ||
+      [];
 
     const alreadyExists =
       webhooks.some(
         (hook) =>
-          hook.destination === destination &&
-          Array.isArray(hook.settings) &&
-          hook.settings.includes('add_message') &&
+          hook.destination ===
+            destination &&
+          Array.isArray(
+            hook.settings
+          ) &&
+          hook.settings.includes(
+            'add_message'
+          ) &&
           !hook.disabled
       );
 
@@ -192,10 +211,14 @@ async function ensureIncomingMessageWebhook(origin) {
       '/api/v4/webhooks',
       {
         method: 'POST',
-        body: JSON.stringify({
-          destination,
-          settings: ['add_message']
-        })
+
+        body:
+          JSON.stringify({
+            destination,
+            settings: [
+              'add_message'
+            ]
+          })
       }
     );
 
@@ -207,7 +230,8 @@ async function ensureIncomingMessageWebhook(origin) {
   } catch (error) {
     console.warn(
       '[Fundidoral] Webhook:',
-      error?.message || error
+      error?.message ||
+        error
     );
 
     return {
@@ -220,6 +244,9 @@ async function ensureIncomingMessageWebhook(origin) {
   }
 }
 
+/*
+  SELECCIONAR PIPELINE
+*/
 async function getPipelinePlacement() {
   try {
     const data =
@@ -228,25 +255,40 @@ async function getPipelinePlacement() {
       );
 
     const pipelines =
-      data?._embedded?.pipelines || [];
+      data?._embedded?.pipelines ||
+      [];
 
     const ranked =
       pipelines
         .map((pipeline) => {
           const name =
-            normalized(pipeline.name);
+            normalized(
+              pipeline.name
+            );
 
           let score = 0;
 
-          if (name.includes('whatsapp')) {
+          if (
+            name.includes(
+              'whatsapp'
+            )
+          ) {
             score += 10;
           }
 
-          if (name.includes('principal')) {
+          if (
+            name.includes(
+              'principal'
+            )
+          ) {
             score += 5;
           }
 
-          if (name.includes('embudo')) {
+          if (
+            name.includes(
+              'embudo'
+            )
+          ) {
             score += 2;
           }
 
@@ -257,7 +299,8 @@ async function getPipelinePlacement() {
         })
         .sort(
           (a, b) =>
-            b.score - a.score
+            b.score -
+            a.score
         );
 
     const selected =
@@ -271,35 +314,56 @@ async function getPipelinePlacement() {
     }
 
     const statuses =
-      selected.pipeline?._embedded?.statuses ||
+      selected.pipeline
+        ?._embedded
+        ?.statuses ||
       [];
 
     const regular =
       statuses
         .filter(
           (status) =>
-            Number(status.type) === 0
+            Number(
+              status.type
+            ) === 0
         )
         .filter(
           (status) =>
-            ![142, 143].includes(
-              Number(status.id)
+            ![
+              142,
+              143
+            ].includes(
+              Number(
+                status.id
+              )
             )
         )
         .sort(
           (a, b) =>
-            Number(a.sort || 0) -
-            Number(b.sort || 0)
+            Number(
+              a.sort || 0
+            ) -
+            Number(
+              b.sort || 0
+            )
         );
 
     const status =
-      regular.find((item) =>
-        normalized(item.name)
-          .includes('informacion')
+      regular.find(
+        (item) =>
+          normalized(
+            item.name
+          ).includes(
+            'informacion'
+          )
       ) ||
-      regular.find((item) =>
-        normalized(item.name)
-          .includes('calificado')
+      regular.find(
+        (item) =>
+          normalized(
+            item.name
+          ).includes(
+            'calificado'
+          )
       ) ||
       regular[0];
 
@@ -307,52 +371,83 @@ async function getPipelinePlacement() {
       pipeline_id:
         Number(
           selected.pipeline.id
-        ) || undefined,
+        ) ||
+        undefined,
 
       status_id:
         Number(
           status?.id
-        ) || undefined
+        ) ||
+        undefined
     };
   } catch (error) {
     console.warn(
       '[Fundidoral] Pipeline:',
-      error?.message || error
+      error?.message ||
+        error
     );
 
     return {};
   }
 }
 
-async function createLead(payload, origin) {
+/*
+  CREAR LEAD
+*/
+async function createLead(
+  payload,
+  origin
+) {
   const product =
-    clean(payload.product, 180);
+    clean(
+      payload.product,
+      180
+    );
 
   const material =
-    clean(payload.material, 180);
+    clean(
+      payload.material,
+      180
+    );
 
   const quantity =
-    Number(payload.quantity);
+    Number(
+      payload.quantity
+    );
 
   const size =
-    clean(payload.size, 180) ||
+    clean(
+      payload.size,
+      180
+    ) ||
     'Por definir';
 
   const finish =
-    clean(payload.finish, 180) ||
+    clean(
+      payload.finish,
+      180
+    ) ||
     'Por definir';
 
   const details =
-    clean(payload.details, 1500) ||
+    clean(
+      payload.details,
+      1500
+    ) ||
     'Por definir';
 
   const fileName =
-    clean(payload.fileName, 255);
+    clean(
+      payload.fileName,
+      255
+    );
 
   if (
     !product ||
     !material ||
-    !Number.isInteger(quantity) ||
+    !Number.isInteger(
+      quantity
+    ) ||
     quantity < 1
   ) {
     throw new Error(
@@ -361,12 +456,21 @@ async function createLead(payload, origin) {
   }
 
   /*
-    Importante:
-    el fallo del webhook nunca debe impedir
-    la creación del lead.
+    Intentamos asegurar el webhook,
+    pero jamás impedimos crear el lead
+    si falla esta operación.
   */
-  ensureIncomingMessageWebhook(origin)
-    .catch(() => {});
+  try {
+    await ensureIncomingMessageWebhook(
+      origin
+    );
+  } catch (error) {
+    console.warn(
+      '[Fundidoral] Webhook no bloqueante:',
+      error?.message ||
+        error
+    );
+  }
 
   const placement =
     await getPipelinePlacement();
@@ -376,19 +480,23 @@ async function createLead(payload, origin) {
       '/api/v4/leads',
       {
         method: 'POST',
-        body: JSON.stringify([
-          {
-            name:
-              `Landing Web · ${product} · ${quantity} piezas`,
-            ...placement
-          }
-        ])
+
+        body:
+          JSON.stringify([
+            {
+              name:
+                `Landing Web · ${product} · ${quantity} piezas`,
+
+              ...placement
+            }
+          ])
       }
     );
 
   const leadId =
     Number(
-      created?._embedded
+      created
+        ?._embedded
         ?.leads?.[0]?.id
     );
 
@@ -398,43 +506,65 @@ async function createLead(payload, origin) {
     );
   }
 
+  /*
+    ETIQUETA
+  */
   try {
     await kommoFetch(
       '/api/v4/leads',
       {
         method: 'PATCH',
-        body: JSON.stringify([
-          {
-            id: leadId,
-            _embedded: {
-              tags: [
-                {
-                  name: 'Landing Web'
-                }
-              ]
+
+        body:
+          JSON.stringify([
+            {
+              id:
+                leadId,
+
+              _embedded: {
+                tags: [
+                  {
+                    name:
+                      'Landing Web'
+                  }
+                ]
+              }
             }
-          }
-        ])
+          ])
       }
     );
   } catch (error) {
     console.warn(
       '[Fundidoral] Etiqueta:',
-      error?.message || error
+      error?.message ||
+        error
     );
   }
 
+  /*
+    NOTA CON COTIZACIÓN
+  */
   const note = [
     'Cotización recibida desde la landing web de Fundidoral.',
+
     '',
+
     `Referencia: FD-${leadId}`,
+
     '',
+
     `Producto: ${product}`,
+
     `Material: ${material}`,
+
     `Cantidad: ${quantity} piezas`,
+
     `Medidas: ${size}`,
+
     `Acabado: ${finish}`,
+
     `Detalles: ${details}`,
+
     fileName
       ? `Archivo: ${fileName}`
       : 'Archivo: No adjunto'
@@ -445,31 +575,43 @@ async function createLead(payload, origin) {
       '/api/v4/leads/notes',
       {
         method: 'POST',
-        body: JSON.stringify([
-          {
-            entity_id: leadId,
-            note_type: 'common',
-            params: {
-              text: note
+
+        body:
+          JSON.stringify([
+            {
+              entity_id:
+                leadId,
+
+              note_type:
+                'common',
+
+              params: {
+                text:
+                  note
+              }
             }
-          }
-        ])
+          ])
       }
     );
   } catch (error) {
     console.warn(
       '[Fundidoral] Nota:',
-      error?.message || error
+      error?.message ||
+        error
     );
   }
 
   return {
     leadId,
+
     reference:
       `FD-${leadId}`
   };
 }
 
+/*
+  OBTENER DRIVE DE KOMMO
+*/
 async function getDriveUrl() {
   const {
     token,
@@ -483,6 +625,7 @@ async function getDriveUrl() {
         headers: {
           Authorization:
             `Bearer ${token}`,
+
           Accept:
             'application/json'
         }
@@ -490,7 +633,9 @@ async function getDriveUrl() {
     );
 
   const account =
-    await parseResponse(response);
+    await parseResponse(
+      response
+    );
 
   let drive =
     clean(
@@ -505,7 +650,9 @@ async function getDriveUrl() {
   }
 
   if (
-    !/^https?:\/\//i.test(drive)
+    !/^https?:\/\//i.test(
+      drive
+    )
   ) {
     drive =
       `https://${drive}`;
@@ -517,7 +664,12 @@ async function getDriveUrl() {
   );
 }
 
-async function createSession(payload) {
+/*
+  CREAR SESIÓN DE ARCHIVO
+*/
+async function createSession(
+  payload
+) {
   const {
     token
   } = config();
@@ -542,7 +694,9 @@ async function createSession(payload) {
 
   if (
     !fileName ||
-    !Number.isInteger(fileSize) ||
+    !Number.isInteger(
+      fileSize
+    ) ||
     fileSize <= 0
   ) {
     throw new Error(
@@ -562,21 +716,30 @@ async function createSession(payload) {
         headers: {
           Authorization:
             `Bearer ${token}`,
+
           Accept:
             'application/json',
+
           'Content-Type':
             'application/json'
         },
 
-        body: JSON.stringify({
-          file_name: fileName,
-          file_size: fileSize,
-          content_type: contentType,
-          with_preview:
-            contentType.startsWith(
-              'image/'
-            )
-        })
+        body:
+          JSON.stringify({
+            file_name:
+              fileName,
+
+            file_size:
+              fileSize,
+
+            content_type:
+              contentType,
+
+            with_preview:
+              contentType.startsWith(
+                'image/'
+              )
+          })
       }
     );
 
@@ -585,7 +748,9 @@ async function createSession(payload) {
       response
     );
 
-  if (!session.upload_url) {
+  if (
+    !session.upload_url
+  ) {
     throw new Error(
       'Kommo no generó upload_url.'
     );
@@ -610,21 +775,29 @@ async function createSession(payload) {
     maxPartSize:
       Number(
         session.max_part_size
-      ) || 131072,
+      ) ||
+      131072,
 
     maxFileSize:
       Number(
         session.max_file_size
-      ) || null
+      ) ||
+      null
   };
 }
 
-function validUploadUrl(value) {
+/*
+  VALIDAR URL DE UPLOAD
+*/
+function validUploadUrl(
+  value
+) {
   const url =
     new URL(value);
 
   if (
-    url.protocol !== 'https:'
+    url.protocol !==
+      'https:'
   ) {
     throw new Error(
       'URL de subida inválida.'
@@ -632,11 +805,13 @@ function validUploadUrl(value) {
   }
 
   const host =
-    url.hostname.toLowerCase();
+    url.hostname
+      .toLowerCase();
 
   if (
     !(
-      host === 'kommo.com' ||
+      host ===
+        'kommo.com' ||
       host.endsWith(
         '.kommo.com'
       )
@@ -650,6 +825,9 @@ function validUploadUrl(value) {
   return url.toString();
 }
 
+/*
+  SUBIR CHUNK
+*/
 async function uploadPart(
   request,
   uploadUrl
@@ -664,9 +842,12 @@ async function uploadPart(
     );
 
   const buffer =
-    await request.arrayBuffer();
+    await request
+      .arrayBuffer();
 
-  if (!buffer.byteLength) {
+  if (
+    !buffer.byteLength
+  ) {
     throw new Error(
       'El fragmento está vacío.'
     );
@@ -681,13 +862,16 @@ async function uploadPart(
         headers: {
           Authorization:
             `Bearer ${token}`,
+
           Accept:
             'application/json',
+
           'Content-Type':
             'application/octet-stream'
         },
 
-        body: buffer
+        body:
+          buffer
       }
     );
 
@@ -696,14 +880,37 @@ async function uploadPart(
       response
     );
 
-  if (data.next_url) {
+  if (
+    data.next_url
+  ) {
     return {
       nextUrl:
         data.next_url
     };
   }
 
-  if (data.uuid) {
+  /*
+    Resultado final de la carga.
+  */
+  if (
+    data.uuid
+  ) {
+    console.log(
+      '[Fundidoral upload] Carga finalizada',
+      {
+        uuid:
+          data.uuid,
+
+        version_uuid:
+          data.version_uuid ||
+          null,
+
+        name:
+          data.name ||
+          null
+      }
+    );
+
     return {
       fileUuid:
         data.uuid,
@@ -727,6 +934,9 @@ async function uploadPart(
   );
 }
 
+/*
+  TIPO PARA CHAT
+*/
 function chatAttachmentType(
   fileName
 ) {
@@ -747,7 +957,12 @@ function chatAttachmentType(
   return 'file';
 }
 
-async function attachFile(payload) {
+/*
+  ADJUNTAR ARCHIVO AL LEAD
+*/
+async function attachFile(
+  payload
+) {
   const leadId =
     Number(
       payload.leadId
@@ -756,13 +971,13 @@ async function attachFile(payload) {
   const fileUuid =
     clean(
       payload.fileUuid,
-      120
+      160
     );
 
   const versionUuid =
     clean(
       payload.versionUuid,
-      120
+      160
     );
 
   const fileName =
@@ -781,32 +996,41 @@ async function attachFile(payload) {
     );
   }
 
-  /*
-    Adjuntamos el archivo al lead.
-  */
   await kommoFetch(
     `/api/v4/leads/${leadId}/files`,
     {
       method: 'PUT',
-      body: JSON.stringify([
-        {
-          file_uuid:
-            fileUuid
-        }
-      ])
+
+      body:
+        JSON.stringify([
+          {
+            file_uuid:
+              fileUuid
+          }
+        ])
+    }
+  );
+
+  console.log(
+    '[Fundidoral attach] Archivo asociado al lead',
+    {
+      leadId,
+      fileUuid,
+      versionUuid,
+      fileName
     }
   );
 
   /*
-    Guardamos los UUID necesarios
-    para luego mandar el archivo
-    al chat de WhatsApp.
+    Conservamos también el marcador
+    como respaldo.
   */
   const markerPayload = {
     fileUuid,
 
     versionUuid:
-      versionUuid || null,
+      versionUuid ||
+      null,
 
     fileName,
 
@@ -816,47 +1040,61 @@ async function attachFile(payload) {
       )
   };
 
-  await kommoFetch(
-    '/api/v4/leads/notes',
-    {
-      method: 'POST',
+  try {
+    await kommoFetch(
+      '/api/v4/leads/notes',
+      {
+        method: 'POST',
 
-      body: JSON.stringify([
-        {
-          entity_id:
-            leadId,
+        body:
+          JSON.stringify([
+            {
+              entity_id:
+                leadId,
 
-          note_type:
-            'common',
+              note_type:
+                'common',
 
-          params: {
-            text:
-              `Archivo recibido desde la landing: ${fileName}`
-          }
-        },
+              params: {
+                text:
+                  `Archivo recibido desde la landing: ${fileName}`
+              }
+            },
 
-        {
-          entity_id:
-            leadId,
+            {
+              entity_id:
+                leadId,
 
-          note_type:
-            'common',
+              note_type:
+                'common',
 
-          params: {
-            text:
-              `${FILE_MARKER}${JSON.stringify(markerPayload)}`
-          }
-        }
-      ])
-    }
-  );
+              params: {
+                text:
+                  `${FILE_MARKER}${JSON.stringify(markerPayload)}`
+              }
+            }
+          ])
+      }
+    );
+  } catch (error) {
+    console.warn(
+      '[Fundidoral attach] No se pudo guardar marcador:',
+      error?.message ||
+        error
+    );
+  }
 
   return {
-    attached: true,
+    attached:
+      true,
+
     leadId,
+
     fileUuid,
+
     versionUuid:
-      versionUuid || null
+      versionUuid ||
+      null
   };
 }
 
@@ -867,71 +1105,272 @@ function noteText(note) {
   );
 }
 
+/*
+  NUEVA VERSIÓN:
+  BUSCAR DIRECTAMENTE EL ARCHIVO
+  ASOCIADO AL LEAD.
+*/
 async function getPendingLandingFile(
   leadId
 ) {
-  const data =
+  console.log(
+    '[Fundidoral webhook] Buscando archivos del lead',
+    {
+      leadId
+    }
+  );
+
+  /*
+    1. Consultar archivos directamente
+    asociados al lead.
+  */
+  const linked =
     await kommoFetch(
-      `/api/v4/leads/${leadId}/notes?limit=250&order[id]=desc`
+      `/api/v4/leads/${leadId}/files?limit=50`
     );
 
-  const notes =
-    data?._embedded?.notes || [];
+  const attachedFiles =
+    linked?._embedded?.files ||
+    [];
 
-  const sent =
-    new Set(
-      notes
-        .map(noteText)
-        .filter(
-          (text) =>
-            text.startsWith(
-              FILE_SENT_MARKER
-            )
-        )
-        .map(
-          (text) =>
-            text.slice(
-              FILE_SENT_MARKER.length
-            )
-        )
-    );
-
-  for (const note of notes) {
-    const text =
-      noteText(note);
-
-    if (
-      !text.startsWith(
-        FILE_MARKER
-      )
-    ) {
-      continue;
+  console.log(
+    '[Fundidoral webhook] Archivos asociados',
+    {
+      leadId,
+      count:
+        attachedFiles.length
     }
+  );
 
-    try {
-      const payload =
-        JSON.parse(
-          text.slice(
-            FILE_MARKER.length
-          )
-        );
-
-      if (
-        payload?.fileUuid &&
-        !sent.has(
-          payload.fileUuid
-        )
-      ) {
-        return payload;
+  if (
+    !attachedFiles.length
+  ) {
+    console.log(
+      '[Fundidoral webhook] El lead no tiene archivos adjuntos',
+      {
+        leadId
       }
-    } catch {
-      // Ignoramos marcadores inválidos.
-    }
+    );
+
+    return null;
   }
 
-  return null;
+  /*
+    Tomamos el más reciente.
+  */
+  const relation =
+    attachedFiles[
+      attachedFiles.length - 1
+    ];
+
+  console.log(
+    '[Fundidoral webhook] Relación de archivo',
+    relation
+  );
+
+  /*
+    Kommo puede devolver
+    file_uuid o uuid según
+    la respuesta.
+  */
+  const relationFileUuid =
+    clean(
+      relation.file_uuid ||
+      relation.uuid,
+      160
+    );
+
+  const relationVersionUuid =
+    clean(
+      relation.version_uuid ||
+      relation.file_version_uuid,
+      160
+    );
+
+  const relationName =
+    clean(
+      relation.name ||
+      relation.file_name,
+      255
+    );
+
+  if (
+    !relationFileUuid
+  ) {
+    console.log(
+      '[Fundidoral webhook] La relación no contiene UUID',
+      {
+        leadId,
+        relation
+      }
+    );
+
+    return null;
+  }
+
+  /*
+    2. Consultar el archivo en Drive.
+  */
+  const {
+    token
+  } = config();
+
+  const driveUrl =
+    await getDriveUrl();
+
+  let driveFile = {};
+
+  try {
+    const response =
+      await fetch(
+        `${driveUrl}/v1.0/files/${encodeURIComponent(relationFileUuid)}`,
+        {
+          headers: {
+            Authorization:
+              `Bearer ${token}`,
+
+            Accept:
+              'application/json'
+          }
+        }
+      );
+
+    driveFile =
+      await parseResponse(
+        response
+      );
+  } catch (error) {
+    /*
+      Si Drive no nos deja consultar
+      el detalle, usamos los datos de
+      la relación del lead como respaldo.
+    */
+    console.warn(
+      '[Fundidoral webhook] No se pudo consultar detalle en Drive:',
+      error?.message ||
+        error
+    );
+  }
+
+  /*
+    Distintas variantes posibles
+    del UUID del archivo.
+  */
+  const realFileUuid =
+    clean(
+      driveFile.uuid ||
+      driveFile.file_uuid ||
+      relationFileUuid,
+      160
+    );
+
+  /*
+    Distintas variantes posibles
+    del UUID de versión.
+  */
+  const versionUuid =
+    clean(
+      driveFile.version_uuid ||
+      driveFile.current_version_uuid ||
+      driveFile.version?.uuid ||
+      driveFile._embedded
+        ?.versions?.[0]?.uuid ||
+      driveFile.versions?.[0]?.uuid ||
+      relationVersionUuid,
+      160
+    );
+
+  const fileName =
+    clean(
+      driveFile.name ||
+      driveFile.file_name ||
+      relationName,
+      255
+    ) ||
+    'Archivo de diseño';
+
+  console.log(
+    '[Fundidoral webhook] Archivo recuperado',
+    {
+      leadId,
+      realFileUuid,
+      versionUuid:
+        versionUuid ||
+        null,
+      fileName
+    }
+  );
+
+  /*
+    3. Evitar duplicar un archivo
+    que ya haya sido enviado.
+  */
+  try {
+    const notes =
+      await kommoFetch(
+        `/api/v4/leads/${leadId}/notes?limit=250&order[id]=desc`
+      );
+
+    const sent =
+      (
+        notes
+          ?._embedded
+          ?.notes ||
+        []
+      ).some(
+        (note) => {
+          const text =
+            noteText(
+              note
+            );
+
+          return (
+            text ===
+            `${FILE_SENT_MARKER}${realFileUuid}`
+          );
+        }
+      );
+
+    if (sent) {
+      console.log(
+        '[Fundidoral webhook] Archivo ya enviado anteriormente',
+        {
+          leadId,
+          fileUuid:
+            realFileUuid
+        }
+      );
+
+      return null;
+    }
+  } catch (error) {
+    console.warn(
+      '[Fundidoral webhook] No se pudo comprobar duplicado:',
+      error?.message ||
+        error
+    );
+  }
+
+  return {
+    fileUuid:
+      realFileUuid,
+
+    versionUuid:
+      versionUuid ||
+      null,
+
+    fileName,
+
+    type:
+      chatAttachmentType(
+        fileName
+      )
+  };
 }
 
+/*
+  ENVIAR ARCHIVO AL CHAT
+*/
 async function sendLandingFileToConversation(
   talkId,
   landingLeadId,
@@ -942,101 +1381,130 @@ async function sendLandingFileToConversation(
     !landingLeadId ||
     !file?.fileUuid
   ) {
-    return {
-      sent: false
-    };
+    throw new Error(
+      'Faltan datos para enviar el archivo al chat.'
+    );
   }
 
-  const body = {
-    attachment: {
-      drive_uuid:
-        file.fileUuid,
+  const attachment = {
+    drive_uuid:
+      file.fileUuid,
 
-      type:
-        file.type ||
-        'file'
-    }
+    type:
+      file.type ||
+      'file'
   };
 
-  if (file.versionUuid) {
-    body.attachment.drive_version_uuid =
+  if (
+    file.versionUuid
+  ) {
+    attachment.drive_version_uuid =
       file.versionUuid;
   }
 
-  /*
-    Endpoint de Kommo para enviar
-    un mensaje/archivo a la conversación.
-  */
-  await kommoFetch(
-    `/api/v4/talks/${talkId}/send_message`,
+  const body = {
+    attachment
+  };
+
+  console.log(
+    '[Fundidoral webhook] Enviando archivo al chat',
     {
-      method: 'POST',
-      body:
-        JSON.stringify(body)
+      talkId,
+      landingLeadId,
+      attachment
     }
   );
 
-  /*
-    Marcamos el archivo como enviado
-    para evitar duplicados.
-  */
-  await kommoFetch(
-    '/api/v4/leads/notes',
-    {
-      method: 'POST',
+  const result =
+    await kommoFetch(
+      `/api/v4/talks/${talkId}/send_message`,
+      {
+        method:
+          'POST',
 
-      body:
-        JSON.stringify([
-          {
-            entity_id:
-              landingLeadId,
+        body:
+          JSON.stringify(
+            body
+          )
+      }
+    );
 
-            note_type:
-              'common',
-
-            params: {
-              text:
-                `${FILE_SENT_MARKER}${file.fileUuid}`
-            }
-          },
-
-          {
-            entity_id:
-              landingLeadId,
-
-            note_type:
-              'common',
-
-            params: {
-              text:
-                `Archivo enviado automáticamente al chat de WhatsApp: ${file.fileName || 'archivo'}`
-            }
-          }
-        ])
-    }
+  console.log(
+    '[Fundidoral webhook] Respuesta envío al chat',
+    result
   );
+
+  /*
+    Marcar como enviado.
+  */
+  try {
+    await kommoFetch(
+      '/api/v4/leads/notes',
+      {
+        method: 'POST',
+
+        body:
+          JSON.stringify([
+            {
+              entity_id:
+                landingLeadId,
+
+              note_type:
+                'common',
+
+              params: {
+                text:
+                  `${FILE_SENT_MARKER}${file.fileUuid}`
+              }
+            },
+
+            {
+              entity_id:
+                landingLeadId,
+
+              note_type:
+                'common',
+
+              params: {
+                text:
+                  `Archivo enviado automáticamente al chat de WhatsApp: ${file.fileName || 'archivo'}`
+              }
+            }
+          ])
+      }
+    );
+  } catch (error) {
+    console.warn(
+      '[Fundidoral webhook] No se pudo marcar como enviado:',
+      error?.message ||
+        error
+    );
+  }
 
   return {
-    sent: true
+    sent:
+      true
   };
 }
 
 /*
-  Extrae valores de webhooks Kommo
-  enviados como x-www-form-urlencoded.
-
-  Soporta:
-  add[0][talk_id]
-  add[0][text]
-  add[0][entity_id]
-  add[0][type]
+  PARSER DEL WEBHOOK FORM-URLENCODED
 */
 function getWebhookField(
   params,
   field
 ) {
+  /*
+    Forma:
+    add[0][talk_id]
+    add[0][text]
+    add[0][entity_id]
+  */
   for (
-    const [key, value]
+    const [
+      key,
+      value
+    ]
     of params.entries()
   ) {
     if (
@@ -1052,19 +1520,25 @@ function getWebhookField(
   }
 
   /*
-    Compatibilidad adicional
-    por si Kommo usa otro prefijo.
+    Compatibilidad adicional.
   */
   for (
-    const [key, value]
+    const [
+      key,
+      value
+    ]
     of params.entries()
   ) {
     if (
-      key.includes('[add]') &&
+      key.includes(
+        '[add]'
+      ) &&
       key.endsWith(
         `[${field}]`
       ) &&
-      !key.includes('[author]')
+      !key.includes(
+        '[author]'
+      )
     ) {
       return value;
     }
@@ -1073,20 +1547,23 @@ function getWebhookField(
   return null;
 }
 
+/*
+  PROCESAR MENSAJE ENTRANTE
+*/
 async function handleIncomingMessageWebhook(
   request
 ) {
   const contentType =
     request.headers.get(
       'content-type'
-    ) || '';
+    ) ||
+    '';
 
-  let incoming = null;
+  let incoming =
+    null;
 
   /*
-    Aunque Kommo documenta el webhook
-    como x-www-form-urlencoded,
-    soportamos JSON también para seguridad.
+    SOPORTE JSON
   */
   if (
     contentType.includes(
@@ -1096,13 +1573,20 @@ async function handleIncomingMessageWebhook(
     const body =
       await request
         .json()
-        .catch(() => ({}));
+        .catch(
+          () => ({})
+        );
 
     incoming =
-      Array.isArray(body?.add)
+      Array.isArray(
+        body?.add
+      )
         ? body.add[0]
         : null;
   } else {
+    /*
+      SOPORTE FORM URL ENCODED
+    */
     const bodyText =
       await request.text();
 
@@ -1160,8 +1644,12 @@ async function handleIncomingMessageWebhook(
     );
 
     return {
-      accepted: true,
-      ignored: true,
+      accepted:
+        true,
+
+      ignored:
+        true,
+
       reason:
         'Evento no reconocido.'
     };
@@ -1203,38 +1691,44 @@ async function handleIncomingMessageWebhook(
       whatsappLeadId,
       type,
       origin,
+
       messageText:
         messageText.slice(
           0,
-          500
+          1000
         )
     }
   );
 
   /*
-    Solo mensajes entrantes.
+    SOLO MENSAJES ENTRANTES.
   */
   if (
     !talkId ||
-    type !== 'incoming'
+    type !==
+      'incoming'
   ) {
     return {
-      accepted: true,
-      ignored: true,
+      accepted:
+        true,
+
+      ignored:
+        true,
+
       reason:
         'No es un mensaje entrante válido.',
+
       talkId,
       type
     };
   }
 
   /*
-    Buscamos:
-    Referencia: FD-23213338
+    La referencia del mensaje tiene
+    el lead real creado por la landing.
 
-    Ese número corresponde al lead
-    creado por la landing, aunque
-    WhatsApp esté usando otro lead.
+    Ejemplo:
+    Referencia: FD-23213544
   */
   const referenceMatch =
     messageText.match(
@@ -1257,19 +1751,23 @@ async function handleIncomingMessageWebhook(
     }
   );
 
-  if (!landingLeadId) {
+  if (
+    !landingLeadId
+  ) {
     return {
-      accepted: true,
-      ignored: true,
+      accepted:
+        true,
+
+      ignored:
+        true,
+
       reason:
         'No se encontró el lead de la landing.'
     };
   }
 
   /*
-    Ignoramos Telegram.
-    Para WhatsApp el origin puede
-    variar según el conector.
+    IGNORAR TELEGRAM.
   */
   if (
     origin &&
@@ -1278,13 +1776,21 @@ async function handleIncomingMessageWebhook(
     )
   ) {
     return {
-      accepted: true,
-      ignored: true,
+      accepted:
+        true,
+
+      ignored:
+        true,
+
       reason:
         'Canal Telegram.'
     };
   }
 
+  /*
+    BUSCAR ARCHIVO REAL
+    DIRECTAMENTE EN EL LEAD.
+  */
   const file =
     await getPendingLandingFile(
       landingLeadId
@@ -1299,10 +1805,16 @@ async function handleIncomingMessageWebhook(
     );
 
     return {
-      accepted: true,
-      noPendingFile: true,
+      accepted:
+        true,
+
+      noPendingFile:
+        true,
+
       landingLeadId,
+
       whatsappLeadId,
+
       talkId
     };
   }
@@ -1311,15 +1823,25 @@ async function handleIncomingMessageWebhook(
     '[Fundidoral webhook] Archivo encontrado',
     {
       landingLeadId,
+
       fileUuid:
         file.fileUuid,
+
       versionUuid:
         file.versionUuid,
+
       fileName:
-        file.fileName
+        file.fileName,
+
+      type:
+        file.type
     }
   );
 
+  /*
+    ENVIAR AL MISMO CHAT
+    DE WHATSAPP.
+  */
   const result =
     await sendLandingFileToConversation(
       talkId,
@@ -1333,16 +1855,25 @@ async function handleIncomingMessageWebhook(
   );
 
   return {
-    accepted: true,
+    accepted:
+      true,
+
     landingLeadId,
+
     whatsappLeadId,
+
     talkId,
+
     reference:
       `FD-${landingLeadId}`,
+
     ...result
   };
 }
 
+/*
+  FUNCIÓN PRINCIPAL DE VERCEL
+*/
 export default {
   async fetch(request) {
     const url =
@@ -1357,11 +1888,13 @@ export default {
 
     try {
       /*
-        WEBHOOK KOMMO
+        WEBHOOK DE KOMMO
       */
       if (
-        request.method === 'POST' &&
-        action === 'webhook'
+        request.method ===
+          'POST' &&
+        action ===
+          'webhook'
       ) {
         const result =
           await handleIncomingMessageWebhook(
@@ -1369,17 +1902,22 @@ export default {
           );
 
         return json({
-          ok: true,
+          ok:
+            true,
+
           ...result
         });
       }
 
       if (
-        request.method !== 'POST'
+        request.method !==
+          'POST'
       ) {
         return json(
           {
-            ok: false,
+            ok:
+              false,
+
             error:
               'Método no permitido.'
           },
@@ -1388,15 +1926,17 @@ export default {
       }
 
       /*
-        SUBIDA DE FRAGMENTOS
+        SUBIR PARTE DE ARCHIVO
       */
       if (
-        action === 'part'
+        action ===
+          'part'
       ) {
         const uploadUrl =
           url.searchParams.get(
             'url'
-          ) || '';
+          ) ||
+          '';
 
         const result =
           await uploadPart(
@@ -1405,13 +1945,15 @@ export default {
           );
 
         return json({
-          ok: true,
+          ok:
+            true,
+
           ...result
         });
       }
 
       /*
-        JSON para las demás acciones.
+        RESTO DE ACCIONES USA JSON.
       */
       const payload =
         await request
@@ -1424,7 +1966,8 @@ export default {
         CREAR LEAD
       */
       if (
-        action === 'create'
+        action ===
+          'create'
       ) {
         const result =
           await createLead(
@@ -1433,16 +1976,19 @@ export default {
           );
 
         return json({
-          ok: true,
+          ok:
+            true,
+
           ...result
         });
       }
 
       /*
-        CREAR SESIÓN DE ARCHIVO
+        CREAR SESIÓN
       */
       if (
-        action === 'session'
+        action ===
+          'session'
       ) {
         const result =
           await createSession(
@@ -1450,16 +1996,19 @@ export default {
           );
 
         return json({
-          ok: true,
+          ok:
+            true,
+
           ...result
         });
       }
 
       /*
-        ADJUNTAR ARCHIVO AL LEAD
+        ADJUNTAR AL LEAD
       */
       if (
-        action === 'attach'
+        action ===
+          'attach'
       ) {
         const result =
           await attachFile(
@@ -1467,14 +2016,18 @@ export default {
           );
 
         return json({
-          ok: true,
+          ok:
+            true,
+
           ...result
         });
       }
 
       return json(
         {
-          ok: false,
+          ok:
+            false,
+
           error:
             'Acción no válida.'
         },
@@ -1488,7 +2041,8 @@ export default {
 
       return json(
         {
-          ok: false,
+          ok:
+            false,
 
           error:
             error?.message ||
