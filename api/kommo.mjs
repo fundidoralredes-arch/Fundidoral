@@ -1,30 +1,36 @@
-const JSON_HEADERS = { 'Content-Type': 'application/json; charset=utf-8' };
+const JSON_HEADERS = {
+  'Content-Type': 'application/json; charset=utf-8'
+};
 
-function responseJson(data, status = 200) {
+function json(data, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
     headers: JSON_HEADERS
   });
 }
 
-function safeText(value, max = 2000) {
+function clean(value, max = 2000) {
   return String(value ?? '').trim().slice(0, max);
 }
 
-function normalize(value) {
-  return safeText(value, 300)
+function normalized(value) {
+  return clean(value, 300)
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase();
 }
 
-function getConfig() {
+function config() {
   const token = process.env.KOMMO_TOKEN;
 
-  const subdomain =
+  const rawSubdomain =
     process.env.KOMMO_SUBDOMAIN ||
     process.env['SUBDOMINIO KOMMO'] ||
     process.env.SUBDOMINIO_KOMMO ||
+    'fundidoral';
+
+  const subdomain =
+    clean(rawSubdomain, 100).replace(/[^a-zA-Z0-9-]/g, '') ||
     'fundidoral';
 
   if (!token) {
@@ -33,52 +39,59 @@ function getConfig() {
 
   return {
     token,
-    subdomain:
-      safeText(subdomain, 100).replace(/[^a-zA-Z0-9-]/g, '') ||
-      'fundidoral'
+    subdomain
   };
 }
 
-async function parseJsonResponse(res) {
+async function parseResponse(res) {
   const text = await res.text();
 
-  let data = null;
+  let data = {};
 
-  try {
-    data = text ? JSON.parse(text) : {};
-  } catch {
-    data = { raw: text };
+  if (text) {
+    try {
+      data = JSON.parse(text);
+    } catch {
+      data = {
+        raw: text
+      };
+    }
   }
 
   if (!res.ok) {
-    const validation = Array.isArray(data?.['validation-errors'])
-      ? data['validation-errors']
-          .map((item) => {
-            const field = item?.field || item?.path || '';
+    const validationErrors =
+      Array.isArray(data?.['validation-errors'])
+        ? data['validation-errors']
+            .map((item) => {
+              const field =
+                item?.field ||
+                item?.path ||
+                '';
 
-            const errors = Array.isArray(item?.errors)
-              ? item.errors
-                  .map(
-                    (e) =>
-                      e?.detail ||
-                      e?.message ||
-                      e?.code ||
-                      ''
-                  )
-                  .filter(Boolean)
-                  .join(', ')
-              : '';
+              const errors =
+                Array.isArray(item?.errors)
+                  ? item.errors
+                      .map(
+                        (error) =>
+                          error?.detail ||
+                          error?.message ||
+                          error?.code ||
+                          ''
+                      )
+                      .filter(Boolean)
+                      .join(', ')
+                  : '';
 
-            return [field, errors]
-              .filter(Boolean)
-              .join(': ');
-          })
-          .filter(Boolean)
-          .join(' | ')
-      : '';
+              return [field, errors]
+                .filter(Boolean)
+                .join(': ');
+            })
+            .filter(Boolean)
+            .join(' | ')
+        : '';
 
     const detail =
-      validation ||
+      validationErrors ||
       data?.detail ||
       data?.title ||
       data?.message ||
@@ -86,7 +99,7 @@ async function parseJsonResponse(res) {
       `HTTP ${res.status}`;
 
     throw new Error(
-      `Kommo respondió ${res.status}: ${safeText(detail, 1200)}`
+      `Kommo respondió ${res.status}: ${clean(detail, 1500)}`
     );
   }
 
@@ -94,162 +107,185 @@ async function parseJsonResponse(res) {
 }
 
 async function kommoFetch(path, options = {}) {
-  const { token, subdomain } = getConfig();
+  const {
+    token,
+    subdomain
+  } = config();
 
-  const headers = new Headers(options.headers || {});
+  const headers =
+    new Headers(options.headers || {});
 
-  headers.set('Authorization', `Bearer ${token}`);
-  headers.set('Accept', 'application/json');
-
-  if (options.body && !headers.has('Content-Type')) {
-    headers.set('Content-Type', 'application/json');
-  }
-
-  const res = await fetch(
-    `https://${subdomain}.kommo.com${path}`,
-    {
-      ...options,
-      headers
-    }
+  headers.set(
+    'Authorization',
+    `Bearer ${token}`
   );
 
-  return parseJsonResponse(res);
+  headers.set(
+    'Accept',
+    'application/json'
+  );
+
+  if (
+    options.body &&
+    !headers.has('Content-Type')
+  ) {
+    headers.set(
+      'Content-Type',
+      'application/json'
+    );
+  }
+
+  const response =
+    await fetch(
+      `https://${subdomain}.kommo.com${path}`,
+      {
+        ...options,
+        headers
+      }
+    );
+
+  return parseResponse(response);
 }
 
-async function choosePipeline() {
+async function getPipelinePlacement() {
   try {
-    const data = await kommoFetch(
-      '/api/v4/leads/pipelines'
-    );
+    const data =
+      await kommoFetch(
+        '/api/v4/leads/pipelines'
+      );
 
     const pipelines =
       data?._embedded?.pipelines || [];
 
-    const target = pipelines
-      .map((pipeline) => {
-        const name = normalize(pipeline.name);
+    const ranked =
+      pipelines
+        .map((pipeline) => {
+          const name =
+            normalized(pipeline.name);
 
-        let score = 0;
+          let score = 0;
 
-        if (name.includes('whatsapp')) {
-          score += 10;
-        }
+          if (
+            name.includes('whatsapp')
+          ) {
+            score += 10;
+          }
 
-        if (name.includes('principal')) {
-          score += 4;
-        }
+          if (
+            name.includes('principal')
+          ) {
+            score += 5;
+          }
 
-        if (name.includes('embudo')) {
-          score += 1;
-        }
+          if (
+            name.includes('embudo')
+          ) {
+            score += 2;
+          }
 
-        return {
-          pipeline,
-          score
-        };
-      })
-      .sort((a, b) => b.score - a.score)[0];
+          return {
+            pipeline,
+            score
+          };
+        })
+        .sort(
+          (a, b) =>
+            b.score - a.score
+        );
 
-    /*
-      Si no encuentra claramente el embudo de WhatsApp,
-      no forzamos ningún pipeline.
-    */
-    if (!target || target.score === 0) {
+    const selected =
+      ranked[0];
+
+    if (
+      !selected ||
+      selected.score === 0
+    ) {
       return {};
     }
 
     const statuses =
-      target.pipeline?._embedded?.statuses || [];
+      selected.pipeline?._embedded
+        ?.statuses || [];
 
     /*
-      IMPORTANTE:
-      type === 1 es "Incoming Leads / Leads Entrantes".
-      Esa etapa del sistema no se usa aquí para crear
-      un lead normal.
-
-      Elegimos solamente etapas normales (type === 0).
+      Solo etapas normales.
+      No utilizamos "Leads Entrantes"
+      porque es una etapa especial.
     */
-    const regularStatuses = statuses
-      .filter((status) => Number(status.type) === 0)
-      .filter(
-        (status) =>
-          ![142, 143].includes(Number(status.id))
-      )
-      .sort(
-        (a, b) =>
-          Number(a.sort || 0) -
-          Number(b.sort || 0)
-      );
+    const regular =
+      statuses
+        .filter(
+          (status) =>
+            Number(status.type) === 0
+        )
+        .filter(
+          (status) =>
+            ![142, 143].includes(
+              Number(status.id)
+            )
+        )
+        .sort(
+          (a, b) =>
+            Number(a.sort || 0) -
+            Number(b.sort || 0)
+        );
 
-    /*
-      En el embudo actual de Fundidoral preferimos
-      "Información" como primera etapa normal.
-
-      Si no existe:
-      - buscamos "Calificado"
-      - y como último recurso usamos la primera etapa normal.
-    */
     const status =
-      regularStatuses.find((item) =>
-        normalize(item.name).includes('informacion')
+      regular.find((item) =>
+        normalized(item.name)
+          .includes('informacion')
       ) ||
-      regularStatuses.find((item) =>
-        normalize(item.name).includes('calificado')
+      regular.find((item) =>
+        normalized(item.name)
+          .includes('calificado')
       ) ||
-      regularStatuses[0];
+      regular[0];
 
     return {
       pipeline_id:
-        Number(target.pipeline.id) || undefined,
+        Number(
+          selected.pipeline.id
+        ) || undefined,
 
       status_id:
-        Number(status?.id) || undefined
+        Number(
+          status?.id
+        ) || undefined
     };
   } catch (error) {
     console.warn(
-      '[Fundidoral Kommo] No se pudo determinar el pipeline:',
+      '[Fundidoral] Pipeline:',
       error?.message || error
     );
 
-    /*
-      Si falla la lectura del pipeline,
-      Kommo crea el lead usando los valores por defecto.
-    */
     return {};
   }
 }
 
 async function createLead(payload) {
-  const product = safeText(
-    payload.product,
-    180
-  );
+  const product =
+    clean(payload.product, 180);
 
-  const material = safeText(
-    payload.material,
-    180
-  );
+  const material =
+    clean(payload.material, 180);
 
-  const quantity = Number(
-    payload.quantity
-  );
+  const quantity =
+    Number(payload.quantity);
 
   const size =
-    safeText(payload.size, 180) ||
+    clean(payload.size, 180) ||
     'Por definir';
 
   const finish =
-    safeText(payload.finish, 180) ||
+    clean(payload.finish, 180) ||
     'Por definir';
 
   const details =
-    safeText(payload.details, 1500) ||
+    clean(payload.details, 1500) ||
     'Por definir';
 
-  const fileName = safeText(
-    payload.fileName,
-    255
-  );
+  const fileName =
+    clean(payload.fileName, 255);
 
   if (
     !product ||
@@ -263,7 +299,7 @@ async function createLead(payload) {
   }
 
   const placement =
-    await choosePipeline();
+    await getPipelinePlacement();
 
   const lead = {
     name:
@@ -271,22 +307,23 @@ async function createLead(payload) {
     ...placement
   };
 
-  /*
-    Creamos primero el lead.
-    La etiqueta se agrega después para evitar que
-    un campo opcional invalide la creación principal.
-  */
-  const created = await kommoFetch(
-    '/api/v4/leads',
-    {
-      method: 'POST',
-      body: JSON.stringify([lead])
-    }
-  );
+  const created =
+    await kommoFetch(
+      '/api/v4/leads',
+      {
+        method: 'POST',
 
-  const leadId = Number(
-    created?._embedded?.leads?.[0]?.id
-  );
+        body: JSON.stringify([
+          lead
+        ])
+      }
+    );
+
+  const leadId =
+    Number(
+      created?._embedded
+        ?.leads?.[0]?.id
+    );
 
   if (!leadId) {
     throw new Error(
@@ -295,9 +332,8 @@ async function createLead(payload) {
   }
 
   /*
-    La etiqueta Landing Web es opcional.
-    Si Kommo no acepta el PATCH, NO bloqueamos
-    la cotización.
+    Etiqueta opcional.
+    Si falla, no interrumpimos la solicitud.
   */
   try {
     await kommoFetch(
@@ -322,174 +358,206 @@ async function createLead(payload) {
     );
   } catch (error) {
     console.warn(
-      '[Fundidoral Kommo] No se pudo agregar la etiqueta Landing Web:',
+      '[Fundidoral] Etiqueta:',
       error?.message || error
     );
   }
 
-  /*
-    Guardamos todos los datos del formulario
-    como nota dentro del lead.
-  */
-  const noteText = [
+  const note = [
     'Cotización recibida desde la landing web de Fundidoral.',
-
-    `Referencia: FD-${leadId}`,
-
     '',
-
+    `Referencia: FD-${leadId}`,
+    '',
     `Producto: ${product}`,
-
     `Material: ${material}`,
-
     `Cantidad: ${quantity} piezas`,
-
     `Medidas: ${size}`,
-
     `Acabado: ${finish}`,
-
     `Detalles: ${details}`,
-
     fileName
-      ? `Archivo seleccionado: ${fileName} (carga en proceso)`
-      : 'Archivo seleccionado: No adjunto'
+      ? `Archivo: ${fileName}`
+      : 'Archivo: No adjunto'
   ].join('\n');
 
-  await kommoFetch(
-    '/api/v4/leads/notes',
-    {
-      method: 'POST',
+  try {
+    await kommoFetch(
+      '/api/v4/leads/notes',
+      {
+        method: 'POST',
 
-      body: JSON.stringify([
-        {
-          entity_id: leadId,
+        body: JSON.stringify([
+          {
+            entity_id:
+              leadId,
 
-          note_type: 'common',
+            note_type:
+              'common',
 
-          params: {
-            text: noteText
+            params: {
+              text: note
+            }
           }
-        }
-      ])
-    }
-  );
+        ])
+      }
+    );
+  } catch (error) {
+    /*
+      Una nota no debe impedir
+      que el lead quede creado.
+    */
+    console.warn(
+      '[Fundidoral] Nota:',
+      error?.message || error
+    );
+  }
 
   return {
     leadId,
-    reference: `FD-${leadId}`
+    reference:
+      `FD-${leadId}`
   };
 }
 
-async function createUploadSession(payload) {
+async function getDriveUrl() {
   const {
     token,
     subdomain
-  } = getConfig();
+  } = config();
 
-  const leadId = Number(
-    payload.leadId
-  );
+  const response =
+    await fetch(
+      `https://${subdomain}.kommo.com/api/v4/account?with=drive_url`,
+      {
+        headers: {
+          Authorization:
+            `Bearer ${token}`,
 
-  const fileName = safeText(
-    payload.fileName,
-    255
-  );
+          Accept:
+            'application/json'
+        }
+      }
+    );
 
-  const fileSize = Number(
-    payload.fileSize
+  const account =
+    await parseResponse(response);
+
+  let drive =
+    clean(
+      account.drive_url,
+      300
+    );
+
+  if (!drive) {
+    throw new Error(
+      'Kommo no devolvió drive_url.'
+    );
+  }
+
+  if (
+    !/^https?:\/\//i.test(drive)
+  ) {
+    drive =
+      `https://${drive}`;
+  }
+
+  return drive.replace(
+    /\/$/,
+    ''
   );
+}
+
+async function createSession(payload) {
+  const {
+    token
+  } = config();
+
+  const fileName =
+    clean(
+      payload.fileName,
+      255
+    );
+
+  const fileSize =
+    Number(
+      payload.fileSize
+    );
 
   const contentType =
-    safeText(
+    clean(
       payload.contentType,
       180
     ) ||
     'application/octet-stream';
 
   if (
-    !leadId ||
     !fileName ||
-    !Number.isFinite(fileSize) ||
+    !Number.isInteger(fileSize) ||
     fileSize <= 0
   ) {
     throw new Error(
-      'Datos de archivo inválidos.'
+      'Datos del archivo inválidos.'
     );
   }
 
-  /*
-    Solicitamos a Kommo el dominio de su servicio
-    de archivos para esta cuenta.
-  */
-  const accountRes = await fetch(
-    `https://${subdomain}.kommo.com/api/v4/account?with=drive_url`,
-    {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        Accept: 'application/json'
+  const driveUrl =
+    await getDriveUrl();
+
+  const response =
+    await fetch(
+      `${driveUrl}/v1.0/sessions`,
+      {
+        method: 'POST',
+
+        headers: {
+          Authorization:
+            `Bearer ${token}`,
+
+          Accept:
+            'application/json',
+
+          'Content-Type':
+            'application/json'
+        },
+
+        body:
+          JSON.stringify({
+            file_name:
+              fileName,
+
+            /*
+              Este es el tamaño REAL
+              exacto del archivo.
+            */
+            file_size:
+              fileSize,
+
+            content_type:
+              contentType,
+
+            with_preview:
+              contentType
+                .startsWith('image/')
+          })
       }
-    }
-  );
-
-  const account =
-    await parseJsonResponse(accountRes);
-
-  let driveUrl = safeText(
-    account.drive_url,
-    300
-  );
-
-  if (!driveUrl) {
-    throw new Error(
-      'Kommo no devolvió la dirección del servicio de archivos.'
     );
-  }
-
-  if (!/^https?:\/\//i.test(driveUrl)) {
-    driveUrl = `https://${driveUrl}`;
-  }
-
-  driveUrl =
-    driveUrl.replace(/\/$/, '');
-
-  /*
-    Creamos la sesión de subida del archivo.
-  */
-  const sessionRes = await fetch(
-    `${driveUrl}/v1.0/sessions`,
-    {
-      method: 'POST',
-
-      headers: {
-        Authorization: `Bearer ${token}`,
-        Accept: 'application/json',
-        'Content-Type': 'application/json'
-      },
-
-      body: JSON.stringify({
-        file_name: fileName,
-        file_size: fileSize,
-        content_type: contentType,
-
-        with_preview:
-          contentType.startsWith('image/')
-      })
-    }
-  );
 
   const session =
-    await parseJsonResponse(sessionRes);
+    await parseResponse(
+      response
+    );
 
   if (!session.upload_url) {
     throw new Error(
-      'Kommo no generó la URL de carga del archivo.'
+      'Kommo no generó upload_url.'
     );
   }
 
   if (
     session.max_file_size &&
     fileSize >
-      Number(session.max_file_size)
+      Number(
+        session.max_file_size
+      )
   ) {
     throw new Error(
       'El archivo supera el tamaño máximo permitido por Kommo.'
@@ -500,17 +568,23 @@ async function createUploadSession(payload) {
     uploadUrl:
       session.upload_url,
 
+    /*
+      El frontend respetará exactamente
+      el tamaño máximo indicado por Kommo.
+    */
     maxPartSize:
-      Number(session.max_part_size) ||
-      131072,
+      Number(
+        session.max_part_size
+      ) || 131072,
 
     maxFileSize:
-      Number(session.max_file_size) ||
-      null
+      Number(
+        session.max_file_size
+      ) || null
   };
 }
 
-function validateUploadUrl(value) {
+function validUploadUrl(value) {
   const url =
     new URL(value);
 
@@ -518,29 +592,31 @@ function validateUploadUrl(value) {
     url.protocol !== 'https:'
   ) {
     throw new Error(
-      'URL de carga inválida.'
+      'URL de subida inválida.'
     );
   }
 
   const host =
-    url.hostname.toLowerCase();
+    url.hostname
+      .toLowerCase();
 
   if (
-    !(
-      host === 'kommo.com' ||
-      host.endsWith('.kommo.com')
+    !host.endsWith(
+      '.kommo.com'
     )
   ) {
     throw new Error(
-      'Host de carga inválido.'
+      'Host de subida inválido.'
     );
   }
 
   if (
-    !url.pathname.includes('/upload/')
+    !url.pathname.includes(
+      '/upload/'
+    )
   ) {
     throw new Error(
-      'Ruta de carga inválida.'
+      'Ruta de subida inválida.'
     );
   }
 
@@ -551,52 +627,47 @@ async function uploadPart(
   request,
   uploadUrl
 ) {
-  const { token } =
-    getConfig();
+  const {
+    token
+  } = config();
 
   const target =
-    validateUploadUrl(uploadUrl);
+    validUploadUrl(
+      uploadUrl
+    );
 
+  /*
+    Recibimos exactamente los bytes
+    enviados por el navegador.
+  */
   const buffer =
     await request.arrayBuffer();
 
-  if (!buffer.byteLength) {
+  const bytes =
+    buffer.byteLength;
+
+  if (!bytes) {
     throw new Error(
-      'La parte del archivo está vacía.'
+      'El fragmento está vacío.'
     );
   }
 
   /*
-    Evitamos que una sola petición a Vercel sea
-    demasiado grande.
+    IMPORTANTE:
+    NO usamos FormData aquí.
+
+    Antes hacíamos:
+      new FormData()
+      form.append(...)
+
+    Eso añadía headers/boundaries al cuerpo
+    y Kommo terminaba recibiendo más bytes
+    que el file_size declarado.
+
+    Ahora reenviamos EXACTAMENTE el mismo
+    ArrayBuffer.
   */
-  if (
-    buffer.byteLength >
-    2 * 1024 * 1024
-  ) {
-    throw new Error(
-      'La parte del archivo es demasiado grande.'
-    );
-  }
-
-  const form =
-    new FormData();
-
-  form.append(
-    'RAW_BODY',
-
-    new Blob(
-      [buffer],
-      {
-        type:
-          'application/octet-stream'
-      }
-    ),
-
-    'part.bin'
-  );
-
-  const res =
+  const response =
     await fetch(
       target,
       {
@@ -607,19 +678,27 @@ async function uploadPart(
             `Bearer ${token}`,
 
           Accept:
-            'application/json'
+            'application/json',
+
+          'Content-Type':
+            'application/octet-stream',
+
+          'Content-Length':
+            String(bytes)
         },
 
-        body: form
+        body:
+          buffer
       }
     );
 
   const data =
-    await parseJsonResponse(res);
+    await parseResponse(
+      response
+    );
 
   /*
-    Si Kommo necesita otra parte,
-    devuelve next_url.
+    Todavía faltan fragmentos.
   */
   if (data.next_url) {
     return {
@@ -629,8 +708,7 @@ async function uploadPart(
   }
 
   /*
-    Cuando termina la subida,
-    Kommo devuelve el UUID del archivo.
+    Archivo terminado.
   */
   if (data.uuid) {
     return {
@@ -647,33 +725,29 @@ async function uploadPart(
 
       size:
         data.size ||
-        null
+        bytes
     };
   }
 
   throw new Error(
-    'Kommo no devolvió el siguiente paso ni el archivo final.'
+    'Kommo no confirmó la subida del archivo.'
   );
 }
 
 async function attachFile(payload) {
-  const leadId = Number(
-    payload.leadId
-  );
+  const leadId =
+    Number(
+      payload.leadId
+    );
 
-  const fileUuid = safeText(
-    payload.fileUuid,
-    100
-  );
-
-  const versionUuid =
-    safeText(
-      payload.versionUuid,
-      100
+  const fileUuid =
+    clean(
+      payload.fileUuid,
+      120
     );
 
   const fileName =
-    safeText(
+    clean(
       payload.fileName,
       255
     ) ||
@@ -689,102 +763,72 @@ async function attachFile(payload) {
   }
 
   /*
-    Adjuntamos físicamente el archivo al lead.
-    Debería aparecer en la sección Media/Archivos
-    de la ficha de Kommo.
+    Esta llamada coloca el archivo
+    directamente en Media/Archivos
+    del lead.
   */
   await kommoFetch(
     `/api/v4/leads/${leadId}/files`,
     {
       method: 'PUT',
 
-      body: JSON.stringify([
-        {
-          file_uuid:
-            fileUuid
-        }
-      ])
+      body:
+        JSON.stringify([
+          {
+            file_uuid:
+              fileUuid
+          }
+        ])
     }
   );
-
-  const createdAt =
-    Math.floor(
-      Date.now() / 1000
-    );
 
   /*
-    Añadimos además:
-    1. Una nota de texto indicando que llegó el archivo.
-    2. Una nota de tipo attachment.
+    Nota informativa opcional.
+    No bloqueamos el proceso si falla.
   */
-  const notes = [
-    {
-      entity_id:
-        leadId,
+  try {
+    await kommoFetch(
+      '/api/v4/leads/notes',
+      {
+        method: 'POST',
 
-      created_at:
-        createdAt,
+        body:
+          JSON.stringify([
+            {
+              entity_id:
+                leadId,
 
-      note_type:
-        'common',
+              note_type:
+                'common',
 
-      params: {
-        text:
-          `Archivo recibido desde la landing: ${fileName}`
-      }
-    },
-
-    {
-      entity_id:
-        leadId,
-
-      created_at:
-        createdAt,
-
-      note_type:
-        'attachment',
-
-      params: {
-        file_uuid:
-          fileUuid,
-
-        ...(versionUuid
-          ? {
-              version_uuid:
-                versionUuid
+              params: {
+                text:
+                  `Archivo recibido desde la landing: ${fileName}`
+              }
             }
-          : {}),
-
-        file_name:
-          fileName
+          ])
       }
-    }
-  ];
-
-  await kommoFetch(
-    '/api/v4/leads/notes',
-    {
-      method: 'POST',
-
-      body:
-        JSON.stringify(notes)
-    }
-  );
+    );
+  } catch (error) {
+    console.warn(
+      '[Fundidoral] Nota de archivo:',
+      error?.message || error
+    );
+  }
 
   return {
-    attached: true
+    attached: true,
+    leadId,
+    fileUuid
   };
 }
 
 export default {
   async fetch(request) {
-    /*
-      El endpoint solamente acepta POST.
-    */
     if (
       request.method !== 'POST'
     ) {
-      return responseJson(
+      return json(
         {
           ok: false,
           error:
@@ -795,7 +839,9 @@ export default {
     }
 
     const url =
-      new URL(request.url);
+      new URL(
+        request.url
+      );
 
     const action =
       url.searchParams.get(
@@ -804,39 +850,36 @@ export default {
 
     try {
       /*
-        SUBIDA DE UNA PARTE DEL ARCHIVO
-
-        La parte se recibe como binario,
-        por eso no intentamos leer JSON.
+        La subida del fragmento
+        NO es JSON.
       */
       if (
         action === 'part'
       ) {
+        const uploadUrl =
+          url.searchParams.get(
+            'url'
+          ) || '';
+
         const result =
           await uploadPart(
             request,
-            url.searchParams.get(
-              'url'
-            ) || ''
+            uploadUrl
           );
 
-        return responseJson({
+        return json({
           ok: true,
           ...result
         });
       }
 
-      /*
-        Las demás acciones reciben JSON.
-      */
       const payload =
         await request
           .json()
-          .catch(() => ({}));
+          .catch(
+            () => ({})
+          );
 
-      /*
-        Crear lead
-      */
       if (
         action === 'create'
       ) {
@@ -845,32 +888,26 @@ export default {
             payload
           );
 
-        return responseJson({
+        return json({
           ok: true,
           ...result
         });
       }
 
-      /*
-        Crear sesión para archivo
-      */
       if (
         action === 'session'
       ) {
         const result =
-          await createUploadSession(
+          await createSession(
             payload
           );
 
-        return responseJson({
+        return json({
           ok: true,
           ...result
         });
       }
 
-      /*
-        Adjuntar archivo al lead
-      */
       if (
         action === 'attach'
       ) {
@@ -879,13 +916,13 @@ export default {
             payload
           );
 
-        return responseJson({
+        return json({
           ok: true,
           ...result
         });
       }
 
-      return responseJson(
+      return json(
         {
           ok: false,
           error:
@@ -899,7 +936,7 @@ export default {
         error
       );
 
-      return responseJson(
+      return json(
         {
           ok: false,
 
