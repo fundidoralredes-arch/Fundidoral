@@ -1,0 +1,31 @@
+:root {
+  --bg: #f4f0e8;
+  --text: #161616;
+  --muted: #66625c;
+  --line: rgba(22,22,22,.16);
+  --panel: #ffffff;
+  --accent: #e66a1f;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--text);font-family:Arial,Helvetica,sans-serif;line-height:1.65}
+a{color:inherit}
+a:focus-visible,button:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
+.legal-shell{max-width:980px;margin:0 auto;padding:28px 24px 72px}
+.legal-nav{display:flex;align-items:center;justify-content:space-between;gap:24px;padding:8px 0 32px;border-bottom:1px solid var(--line)}
+.legal-brand{font-weight:800;letter-spacing:.08em;text-decoration:none}
+.legal-back{font-size:14px;text-decoration:none;border-bottom:1px solid currentColor}
+.legal-hero{padding:72px 0 42px}
+.legal-kicker{font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}
+h1{font-size:clamp(42px,7vw,76px);line-height:.98;letter-spacing:-.045em;margin:14px 0 20px;max-width:850px}
+.legal-lead{font-size:18px;max-width:760px;color:#3f3c38}
+.legal-updated{font-size:13px;color:var(--muted);margin-top:18px}
+.legal-card{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:clamp(24px,5vw,52px);box-shadow:0 10px 40px rgba(0,0,0,.035)}
+.legal-card h2{font-size:26px;line-height:1.2;margin:42px 0 12px;letter-spacing:-.02em}
+.legal-card h2:first-child{margin-top:0}
+.legal-card p{margin:0 0 18px}
+.legal-note{border-left:3px solid var(--accent);padding:4px 0 4px 18px;margin:26px 0;color:#3f3c38}
+.legal-footer{display:flex;flex-wrap:wrap;gap:14px 24px;justify-content:space-between;padding-top:34px;margin-top:34px;border-top:1px solid var(--line);font-size:13px;color:var(--muted)}
+.legal-footer-links{display:flex;flex-wrap:wrap;gap:16px}
+@media (prefers-reduced-motion: reduce){html{scroll-behavior:auto}*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}}
+@media (max-width:640px){.legal-nav{align-items:flex-start}.legal-hero{padding-top:50px}.legal-shell{padding-inline:18px}.legal-card{border-radius:14px}}
