@@ -1,4 +1,3 @@
-
 <!doctype html>
 <html lang="es">
 <head>
@@ -26,7 +25,7 @@
 
   <link
     rel="stylesheet"
-    href="styles.d4118e2c70.css"
+    href="styles.d4118e2c70.css?v=3"
   >
 
   <script
@@ -94,7 +93,6 @@
       }
     }
   </style>
-
   <!-- Meta Pixel Code -->
   <script>
   !function(f,b,e,v,n,t,s)
@@ -298,6 +296,9 @@
     class="hero-gallery"
     role="region"
     aria-label="Carrusel de piezas de Fundidoral"
+    aria-roledescription="carrusel"
+    aria-describedby="carouselHint"
+    tabindex="0"
   >
 
     <div class="carousel-track">
@@ -366,13 +367,9 @@
       PIEZAS CON IDENTIDAD PROPIA
     </span>
 
-    <button
-      id="carouselPause"
-      type="button"
-      aria-pressed="false"
-    >
-      Pausar carrusel Ⅱ
-    </button>
+    <span class="carousel-hint" id="carouselHint">
+      DESLIZA O ARRASTRA PARA EXPLORAR ↔
+    </span>
 
   </div>
 
@@ -440,14 +437,14 @@
 
           <img
             class="product-image"
-            src="assets/pin-furia.3fe0a25219.webp"
-            srcset="assets/pin-furia-480.a437faae01.webp 480w, assets/pin-furia.3fe0a25219.webp 900w"
+            src="assets/pin-farmatodo.webp"
+            srcset="assets/pin-farmatodo-480.webp 480w, assets/pin-farmatodo.webp 1254w"
             sizes="(max-width:700px) 90vw, 45vw"
             loading="eager"
             decoding="async"
-            alt="Pin esmaltado de Furia en rojo, amarillo y negro"
-            width="900"
-            height="900"
+            alt="Pin esmaltado de Farmatodo con el mensaje Tú haces la diferencia"
+            width="1254"
+            height="1254"
           >
 
         </div>
@@ -1215,6 +1212,10 @@
         <option>Portatítulos</option>
         <option>Monedas</option>
         <option>Llaveros</option>
+        <option>Bordados</option>
+        <option>Sublimación</option>
+        <option>Restauración</option>
+        <option>Servicios galvánicos</option>
         <option>Otros productos</option>
 
       </select>
@@ -1634,7 +1635,7 @@
     />
 
     <path
-      d="M8 7.5c-.5 3 2.5 6.5 6 8l2-2-2.5-1.5-1 1L9 7Z"
+      d="M8 7.5c-.5 3 2.5 6.5 6 8l2-2-2.5-1.5-1 1c-1.7-.8-2.5-1.7-3-3l1-1L9 7Z"
     />
 
   </svg>
@@ -1691,9 +1692,8 @@
 
 <script
   defer
-  src="app.51f2c7718a.js?v=2"
+  src="app.51f2c7718a.js?v=3"
 ></script>
 
 </body>
 </html>
-
